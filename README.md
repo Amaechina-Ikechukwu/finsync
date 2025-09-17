@@ -1,50 +1,217 @@
-# Welcome to your Expo app 👋
+# 💰 FinSync - Modern Financial Services App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+[![React Native](https://img.shields.io/badge/React%20Native-0.74-blue.svg)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-53.0-black.svg)](https://expo.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Get started
+A comprehensive mobile financial services application built with React Native and Expo, offering seamless VTU services, bill payments, and financial management tools.
 
-1. Install dependencies
+## ✨ Features
 
+### 🔐 Security & Authentication
+- **Biometric Authentication** (Face ID, Touch ID, Fingerprint)
+- **PIN-based Security** with app lock functionality
+- **Session Management** with automatic locking
+- **Secure Storage** for sensitive data
+
+### 💸 VTU Services
+- **Airtime Purchase** - Buy airtime for all major networks (MTN, GLO, Airtel, 9Mobile)
+- **Data Bundles** - Purchase internet data plans with network auto-detection
+- **Cable TV Subscriptions** - Pay for GOtv, DStv, Startimes, and Showmax
+- **Electricity Bills** - Pay electricity bills for all major distribution companies
+- **Betting Wallet Funding** - Top up betting accounts
+
+### 👥 Beneficiary Management
+- **Save Beneficiaries** for quick repeat transactions
+- **Smart Duplicate Detection** prevents duplicate entries
+- **Multiple Service Types** support (VTU, Cable, Electricity, Betting)
+- **Quick Access** to frequently used services
+
+### 📊 Financial Dashboard
+- **Account Overview** with real-time balance
+- **Transaction History** with categorized spending
+- **Revenue Charts** and financial analytics
+- **Weekly Summary** statistics
+
+### 🎨 User Experience
+- **Dark/Light Theme** support
+- **Smooth Animations** and transitions
+- **Skeleton Loading** for better perceived performance
+- **Haptic Feedback** for enhanced interactions
+- **Responsive Design** for all screen sizes
+
+### 🚀 Performance
+- **Optimized Data Fetching** with smart caching
+- **State Management** with Zustand
+- **Navigation Restoration** after app lock
+- **Background State Handling**
+
+## 🛠 Tech Stack
+
+- **Framework**: React Native with Expo
+- **Language**: TypeScript
+- **Navigation**: Expo Router (file-based routing)
+- **State Management**: Zustand with persistence
+- **UI Components**: Custom themed components
+- **Animations**: React Native Animated API
+- **Storage**: AsyncStorage + Expo SecureStore
+- **Authentication**: Expo Local Authentication
+- **Icons**: Expo Vector Icons with SF Symbols mapping
+
+## � Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- Expo CLI (`npm install -g @expo/cli`)
+- iOS Simulator or Android Emulator (optional)
+- Expo Go app on your mobile device
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/[your-username]/finsync.git
+   cd finsync
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. **Start the development server**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Run on your device**
+   - Scan QR code with Expo Go app
+   - Or run on simulator: `npx expo start --ios` or `npx expo start --android`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🏗 Project Structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+```
+app/
+├── (tabs)/                 # Tab navigation screens
+│   ├── index.tsx          # Home dashboard
+│   ├── explore.tsx        # Explore features
+│   ├── profile.tsx        # User profile
+│   └── utilities.tsx      # Utility services
+├── vtu/                   # VTU service screens
+│   ├── index.tsx          # Airtime purchase
+│   ├── buy-data.tsx       # Data bundle purchase
+│   ├── buy-cable.tsx      # Cable TV subscriptions
+│   ├── buy-electricity.tsx # Electricity bill payment
+│   └── fund-betting.tsx   # Betting wallet funding
+├── auth screens...        # Authentication flow
+└── _layout.tsx           # Root layout with navigation
 
-## Get a fresh project
+components/
+├── ui/                   # Reusable UI components
+├── home/                 # Home screen components
+├── security/             # Security-related components
+└── themed components...  # Theme-aware components
 
-When you're ready, run:
+services/
+├── apiClient.ts          # HTTP client configuration
+└── apiService.ts         # API service definitions
 
-```bash
-npm run reset-project
+store/
+├── appStore.ts           # App-wide state management
+└── simpleStore.ts        # Data and beneficiary management
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🔧 Configuration
 
-## Learn more
+### Environment Setup
+The app uses TypeScript and requires no additional environment configuration for development.
 
-To learn more about developing your project with Expo, look at the following resources:
+### API Integration
+This is a frontend application. Update the API base URL in `services/apiClient.ts` to connect to your backend services. The app includes mock API service definitions that can be integrated with any compatible backend.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Firebase (Optional)
+Firebase configuration is available in `firebase.ts` for additional features like push notifications and analytics.
 
-## Join the community
+## 📱 Screenshots
 
-Join our community of developers creating universal apps.
+> Add screenshots of your app here to showcase the UI and features
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🎯 Demo
+
+> Add a link to a live demo or video walkthrough of the app
+
+## 📱 Supported Services
+### Mobile Networks
+- MTN Nigeria
+- GLO Nigeria  
+- Airtel Nigeria
+- 9Mobile Nigeria
+
+### Cable TV Providers
+- GOtv
+- DStv
+- Startimes
+- Showmax
+
+### Electricity Companies
+- AEDC (Abuja Electric)
+- BEDC (Benin Electric)
+- EKEDC (Eko Electric)
+- EEDC (Enugu Electric)
+- IBEDC (Ibadan Electric)
+- IKEDC (Ikeja Electric)
+- And 6 more distribution companies
+
+## 🎯 Key Features Deep Dive
+
+### Beneficiary System
+- Automatic customer info population
+- Service-specific duplicate detection
+- Quick selection for repeat transactions
+- Persistent storage across app sessions
+
+### Security Features
+- PIN requirement for app access
+- Biometric unlock support
+- Automatic session timeout
+- Secure credential storage
+
+### Smart UX
+- Network auto-detection for VTU services
+- Skeleton loading screens
+- Pull-to-refresh functionality
+- Haptic feedback integration
+
+## 🚗 Roadmap
+
+- [ ] **Payment Gateway Integration** - Stripe, Paystack, Flutterwave
+- [ ] **Bank Transfer Features** - Account-to-account transfers
+- [ ] **QR Code Payments** - Scan-to-pay functionality
+- [ ] **Expense Tracking** - Categorized spending analysis
+- [ ] **Budget Management** - Set and track spending limits
+- [ ] **Multi-language Support** - Internationalization
+- [ ] **Offline Mode** - Basic functionality without internet
+- [ ] **Social Features** - Split bills and group payments
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Expo](https://expo.dev/)
+- Icons from [SF Symbols](https://developer.apple.com/sf-symbols/)
+- Design inspiration from modern fintech apps
+
+---
+
+**Note**: This is a demo application. Ensure proper security audits and compliance checks before using in production environments.

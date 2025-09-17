@@ -1,27 +1,52 @@
 {
   "expo": {
-    "name": "finsync-app",
+    "name": "FINSYNC",
     "slug": "finsync-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "finsyncapp",
+    "icon": "./assets/images/icon-light.png",
+    "scheme": "finsync",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon-light.png",
+      "imageWidth": 200,
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff",
+      "dark": {
+        "image": "./assets/images/splash-icon-dark.png",
+        "backgroundColor": "#000000"
+      }
+    },
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": {
+        "light": "./assets/images/icon-light.png",
+        "dark": "./assets/images/icon-dark.png"
+      },
+      "bundleIdentifier": "com.ikayna.finsync",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.ikayna.finsync",
+      "googleServicesFile": "./google-services.json"
+    },
+    "notification": {
+      "icon": "./assets/images/icon-light.png",
+      "color": "#ffffff",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "Finsync"
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
@@ -30,19 +55,50 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-icon-light.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon-light.png",
+          "color": "#ffffff",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "finsync",
+          "organization": "march-e0"
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4cd46e21-8ba2-4b13-93eb-41f6312e36ee"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4cd46e21-8ba2-4b13-93eb-41f6312e36ee"
     }
   }
 }
