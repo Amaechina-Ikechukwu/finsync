@@ -1,9 +1,9 @@
-import { COUNTRIES } from '@/app/giftcards/countries';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import AppButton from '@/components/ui/AppButton';
 import CustomAlert from '@/components/ui/CustomAlert';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { VIRTUAL_NUMBER_COUNTRIES as COUNTRIES, type Country } from '@/constants/virtualNumberCountries';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useCustomAlert } from '@/hooks/useCustomAlert';
 import { VirtualNumberProductsByService, virtualNumberService } from '@/services/apiService';
@@ -52,10 +52,12 @@ export default function ProductListScreen() {
       setLoading(true);
       setError(null);
       
-      const response = await virtualNumberService.getProductPrices(selectedCountry.code);
+  // Use existing service method; API expects country code param
+  const response = await virtualNumberService.getVirtualNumberPricing(selectedCountry.code);
       
       if (response.success && response.data) {
-        const productList = transformApiData(response.data.data);
+        const payload = (response.data as any)?.data ?? response.data;
+        const productList = transformApiData(payload as VirtualNumberProductsByService);
         setProducts(productList);
       } else {
         setError('Failed to fetch products');
@@ -150,7 +152,7 @@ export default function ProductListScreen() {
       <AppButton
         title={item.count > 0 ? "Buy Now" : "Out of Stock"}
         onPress={() => handleBuyProduct(item)}
-        style={[styles.buyButton, item.count === 0 && { opacity: 0.5 }]}
+        style={styles.buyButton}
         disabled={item.count === 0}
       />
     </ThemedView>

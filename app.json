@@ -20,10 +20,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "icon": {
-        "light": "./assets/images/icon-light.png",
-        "dark": "./assets/images/icon-dark.png"
-      },
+      "icon": "./assets/images/icon-dark.png",
       "bundleIdentifier": "com.ikayna.finsync",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

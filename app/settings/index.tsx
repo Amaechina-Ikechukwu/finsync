@@ -2,6 +2,7 @@ import { router, type Href } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Linking,
     ScrollView,
     StyleSheet,
     Switch,
@@ -340,14 +341,14 @@ export default function SettingsScreen() {
                     title: 'Terms of Service',
                     icon: 'doc.text.fill',
                     type: 'navigation',
-                    onPress: () => showNotification('Terms of service coming soon', 'info')
+                    onPress: () => router.push('/settings/terms' as Href)
                 },
                 {
                     id: 'privacy',
                     title: 'Privacy Policy',
                     icon: 'hand.raised.fill',
                     type: 'navigation',
-                    onPress: () => showNotification('Privacy policy coming soon', 'info')
+                    onPress: () => Linking.openURL('https://www.termsfeed.com/live/c4822276-2354-4a83-a113-6a342c4dbde3')
                 },
                 // {
                 //     id: 'licenses',
