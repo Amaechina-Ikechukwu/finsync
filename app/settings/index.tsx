@@ -321,7 +321,24 @@ export default function SettingsScreen() {
                     subtitle: 'Get help from our team',
                     icon: 'message.fill',
                     type: 'navigation',
-                    onPress: () => showNotification('Support chat coming soon', 'info')
+                    onPress: async () => {
+                        try {
+                            const email = 'finsyncdigitalservices@gmail.com';
+                            const subject = encodeURIComponent('FinSync Support Request');
+                            const body = encodeURIComponent(
+                                `Hi FinSync Support,\n\nPlease help me with ...\n\nUser: ${userData.fullname || ''}\nEmail: ${userData.email || ''}`
+                            );
+                            const url = `mailto:${email}?subject=${subject}&body=${body}`;
+                            const supported = await Linking.canOpenURL(url);
+                            if (supported) {
+                                await Linking.openURL(url);
+                            } else {
+                                showNotification('No email app found on this device', 'error');
+                            }
+                        } catch (e) {
+                            showNotification('Could not open email app', 'error');
+                        }
+                    }
                 },
                 {
                     id: 'feedback',
