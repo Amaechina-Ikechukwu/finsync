@@ -17,7 +17,7 @@ import { getSessionUnlocked, isPasscodeSet, setSessionUnlocked } from '@/utils/s
 import * as Sentry from '@sentry/react-native';
 import * as SecureStore from 'expo-secure-store';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 Sentry.init({
   dsn: 'https://f4a2ac353deb0e0df0a1202f983c3edf@o4507437373980672.ingest.de.sentry.io/4509849441927248',
@@ -306,16 +306,17 @@ export default Sentry.wrap(function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <InAppNotificationProvider>
-          <SessionProvider>
-            <FirebaseNotificationsInitializer />
-          <AuthNavigator />
-          </SessionProvider>
-          
-        </InAppNotificationProvider>
-      </GestureHandlerRootView>
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <InAppNotificationProvider>
+            <SessionProvider>
+              <FirebaseNotificationsInitializer />
+              <AuthNavigator />
+            </SessionProvider>
+          </InAppNotificationProvider>
+        </GestureHandlerRootView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 });
