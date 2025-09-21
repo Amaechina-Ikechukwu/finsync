@@ -28,7 +28,7 @@ export default function ChangePinNewPinScreen() {
     setLoading(true);
     try {
       const res = await userService.changeTransactionPin({ oldPin, newPin });
-      console.log(JSON.stringify(res,null,2))
+   
       if (res.success) {
         showNotification(res.message || 'Transaction PIN changed successfully', 'success');
         router.replace('/settings');

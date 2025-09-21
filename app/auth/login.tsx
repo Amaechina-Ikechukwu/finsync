@@ -30,7 +30,7 @@ export default function Login() {
       // Navigation will be handled by root layout
     } catch (error: any) {
       console.error('Sign in error:', error);
-      showNotification(error.message || 'Failed to sign in', 'error');
+      showNotification('Failed to sign in', 'error');
     } finally {
       setLoading(false);
     }

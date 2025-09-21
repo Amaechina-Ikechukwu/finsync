@@ -79,7 +79,7 @@ const {showNotification}=useNotification()
         }
         showNotification(res.message || 'Failed to submit application', 'error');
       } catch (err: any) {
-        console.log({ err });
+  
         showNotification('Network Error', 'error');
       } finally {
         setLoading(false);

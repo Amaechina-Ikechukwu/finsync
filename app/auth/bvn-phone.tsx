@@ -4,6 +4,7 @@ import { ThemedView } from '@/components/ThemedView';
 import AppButton from '@/components/ui/AppButton';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { bvnService } from '@/services/apiService';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
@@ -57,23 +58,24 @@ export default function BvnPhoneScreen() {
     setLoading(true);
     
     try {
-      // Simulate API call to verify phone number against BVN
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      showNotification('OTP sent to your phone number', 'success');
-      
-      // Navigate to OTP verification screen
-      router.push({
-        pathname: '/auth/bvn-otp',
-        params: { 
-          bvn, 
-          sessionId,
-          phoneNumber: phoneNumber.replace(/[^0-9]/g, ''),
-          name
-        }
-      });
-    } catch (error) {
-      showNotification('Failed to verify phone number. Please try again.', 'error');
+      const resp = await bvnService.submitPhone({ completePhone: phoneNumber.replace(/[^0-9]/g, ''), sessionId });
+      if (resp.success && resp.data) {
+        showNotification(resp.data.message || 'OTP sent to your phone number', 'success');
+        router.push({
+          pathname: '/auth/bvn-otp',
+          params: {
+            bvn,
+            sessionId,
+            phoneNumber: phoneNumber.replace(/[^0-9]/g, ''),
+            otpId: resp.data.otpId,
+            name
+          }
+        });
+      } else {
+        showNotification(resp.message || 'Failed to verify phone number', 'error');
+      }
+    } catch (error: any) {
+      showNotification(error.message || 'Failed to verify phone number. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   },
   inner: {
     width: '100%',
-    maxWidth: 400,
+    // maxWidth: 400,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,

@@ -29,7 +29,7 @@ const HostedCardList: React.FC = () => {
         const response = await fetch(`${apiUrl}/giftcards/available`);
         const data = await response.json();
         if (data.success && Array.isArray(data.cards)) {
-          console.log(JSON.stringify(data.cards,null,2))
+      
           setCards(data.cards);
         } else {
           setError('Failed to load hosted cards');

@@ -1177,6 +1177,12 @@ export interface BvnVerificationData {
   maskedPhone: string;
   expiresIn: number;
   name: string;
+  lastThree?: string;
+  bvnData?: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+  };
 }
 
 export interface BvnVerificationResponse {
@@ -1184,6 +1190,52 @@ export interface BvnVerificationResponse {
   message: string;
   data: BvnVerificationData;
 }
+
+// Dojah BVN flow interfaces
+export interface BvnStartRequest { bvn: string }
+export interface BvnStartData extends BvnVerificationData {}
+
+export interface BvnPhoneRequest { completePhone: string; sessionId: string }
+export interface BvnPhoneData { otpId: string; message: string }
+
+export interface BvnVerifyRequest { otpCode: string; otpId: string }
+export interface BvnVerifyData {
+  phoneNumber?: string;
+  verified?: boolean;
+  verification?: {
+    verificationStatus?: string; // e.g., 'completed'
+    bvnVerified?: boolean;
+    phoneVerified?: boolean;
+    userProfile?: {
+      firstName?: string;
+      middleName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+      phoneNumber?: string;
+    };
+  };
+  fullyVerified?: boolean;
+  requiresAdminReview?: boolean;
+}
+
+export interface BvnResendOtpRequest { sessionId: string }
+export interface BvnResendOtpData { otpId: string; message: string }
+
+// Dojah BVN API services
+export const bvnService = {
+  start: async (payload: BvnStartRequest): Promise<ApiResponse<BvnStartData>> => {
+    return await apiClient.post<BvnStartData>('/accounts/dojah/bvn/start', payload);
+  },
+  submitPhone: async (payload: BvnPhoneRequest): Promise<ApiResponse<BvnPhoneData>> => {
+    return await apiClient.post<BvnPhoneData>('/accounts/dojah/bvn/phone', payload);
+  },
+  verifyOtp: async (payload: BvnVerifyRequest): Promise<ApiResponse<BvnVerifyData>> => {
+    return await apiClient.post<BvnVerifyData>('/accounts/dojah/bvn/verify', payload);
+  },
+  resendOtp: async (payload: BvnResendOtpRequest): Promise<ApiResponse<BvnResendOtpData>> => {
+    return await apiClient.post<BvnResendOtpData>('/accounts/dojah/bvn/resend-otp', payload);
+  },
+};
 
 // Transfer and Banking API services
 export const transferService = {
@@ -1239,6 +1291,7 @@ export const userService = {
 
   // Change transaction PIN
   changeTransactionPin: async (request: PinChangeRequest): Promise<ApiResponse<{ message: string }>> => {
+    
     return await apiClient.post<{ message: string }>('/transactions/pin/change', request);
   },
 };

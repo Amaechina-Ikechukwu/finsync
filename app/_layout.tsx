@@ -39,11 +39,11 @@ function AuthNavigator() {
   const router = useRouter();
   const segments = useSegments();
   const rootNav = useRootNavigationState();
-  
-  // Simple auth state
+
   const [user, setUser] = React.useState<User | null>(null);
   const [seenOnboarding, setSeenOnboarding] = React.useState(false);
   const [isPinSet, setIsPinSet] = React.useState(false);
+  const [isBvnVerified, setIsBvnVerified] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [navigationReady, setNavigationReady] = React.useState(false);
   const [isNavigating, setIsNavigating] = React.useState(false);
@@ -61,13 +61,11 @@ function AuthNavigator() {
     Belgrano: require('../assets/fonts/Belgrano-Regular.ttf'),
   });
 
-  // Initialize auth state
+  // Initialize flags and auth
   React.useEffect(() => {
     let mounted = true;
-    
-    const initialize = async () => {
+    const init = async () => {
       try {
-        // Check onboarding
         const onboarded = await SecureStore.getItemAsync('seenOnboarding');
 
         // Check session unlock state
@@ -83,6 +81,12 @@ function AuthNavigator() {
         } catch {}
         if (mounted) setIsPinSet(pinSet && pinForUser);
 
+        // Check BVN verification flag
+        try {
+          const bvnFlag = await SecureStore.getItemAsync('bvnVerified');
+          if (mounted) setIsBvnVerified(bvnFlag === 'true');
+        } catch {}
+
         // If a PIN is set for this user, consider onboarding complete automatically
         if (mounted) {
           if (pinSet && pinForUser) {
@@ -96,7 +100,7 @@ function AuthNavigator() {
         }
         
         // Setup auth listener
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           if (mounted) {
             setUser(firebaseUser);
             setIsLoading(false);
@@ -111,37 +115,31 @@ function AuthNavigator() {
           unsubscribe();
           mounted = false;
         };
-      } catch (error) {
-        console.error('Auth initialization error:', error);
+      } catch (e) {
+        console.error('Auth initialization error:', e);
         if (mounted) setIsLoading(false);
       }
     };
-    
-    initialize();
+    init();
   }, []);
 
-  // Re-check onboarding and PIN status when navigation occurs
+  // Re-check stored flags when visiting key auth routes
   React.useEffect(() => {
     if (!navigationReady) return;
-    
     const currentRoute = segments.join('/') || '';
-    
-    // Only re-check states when transitioning to/from specific routes
-    if (currentRoute === 'auth/onboarding' || currentRoute === 'auth/login' || currentRoute === 'auth/pin-setup') {
-      const recheckStates = async () => {
-        // Re-check onboarding status
+    if (
+      currentRoute === 'auth/onboarding' ||
+      currentRoute === 'auth/login' ||
+      currentRoute === 'auth/pin-setup' ||
+      currentRoute.startsWith('auth/bvn-')
+    ) {
+      (async () => {
         const onboarded = await SecureStore.getItemAsync('seenOnboarding');
-        const newOnboardingState = onboarded === 'true';
-        
-        console.log('Layout: Re-checking states', { 
-          currentRoute, 
-          oldOnboarding: seenOnboarding, 
-          newOnboarding: newOnboardingState 
-        });
-        
-        setSeenOnboarding(newOnboardingState);
-        
-        // Re-check PIN status if user exists (respect owner UID)
+        setSeenOnboarding(onboarded === 'true');
+        try {
+          const bvnFlag = await SecureStore.getItemAsync('bvnVerified');
+          setIsBvnVerified(bvnFlag === 'true');
+        } catch {}
         if (user) {
           const pinSet = await isPasscodeSet();
           let pinForUser = false;
@@ -152,13 +150,11 @@ function AuthNavigator() {
           } catch {}
           setIsPinSet(pinSet && pinForUser);
         }
-      };
-      
-      recheckStates();
+      })();
     }
   }, [navigationReady, segments]);
 
-  // Wait for fonts and initial auth check
+  // Enable navigation once fonts/auth ready
   React.useEffect(() => {
     if (loaded && !isLoading) {
       setNavigationReady(true);
@@ -166,107 +162,95 @@ function AuthNavigator() {
     }
   }, [loaded, isLoading]);
 
-  // Handle navigation after state is ready
+  // Main gating
   React.useEffect(() => {
     if (!navigationReady || isNavigating || !rootNav?.key) return;
-    
     const currentRoute = segments.join('/') || '';
-    console.log('Navigation check:', { currentRoute, seenOnboarding, user: !!user, isPinSet });
-    
-    // Sequential flow with strict gating
-    // 1) Onboarding must be completed first. When not completed, allow onboarding or login (to avoid bounce after pressing Skip/Get Started)
+
+    if (user) {
+      if (!user.emailVerified && currentRoute !== 'auth/verify-email') {
+        setIsNavigating(true);
+        router.replace('/auth/verify-email');
+        setTimeout(() => setIsNavigating(false), 500);
+        return;
+      }
+      const onBvnFlow = currentRoute === 'auth/bvn-entry' || currentRoute === 'auth/bvn-phone' || currentRoute === 'auth/bvn-otp';
+      if (user.emailVerified && !isBvnVerified && !onBvnFlow) {
+        setIsNavigating(true);
+        router.replace('/auth/bvn-entry');
+        setTimeout(() => setIsNavigating(false), 500);
+        return;
+      }
+      if (user.emailVerified && isBvnVerified && !isPinSet && currentRoute !== 'auth/pin-setup') {
+        setIsNavigating(true);
+        router.replace('/auth/pin-setup');
+        setTimeout(() => setIsNavigating(false), 500);
+        return;
+      }
+      if (
+        isPinSet &&
+        currentRoute.startsWith('auth/') &&
+        currentRoute !== 'auth/biometrics-setup' &&
+        currentRoute !== 'auth/app-unlock'
+      ) {
+        setIsNavigating(true);
+        router.replace('/(tabs)');
+        setTimeout(() => setIsNavigating(false), 500);
+        return;
+      }
+      if (isPinSet && !currentRoute) {
+        setIsNavigating(true);
+        router.replace('/(tabs)');
+        setTimeout(() => setIsNavigating(false), 500);
+        return;
+      }
+      return;
+    }
+
+    // Not signed in
     if (!seenOnboarding) {
       if (currentRoute !== 'auth/onboarding' && currentRoute !== 'auth/login') {
-        console.log('Redirecting to onboarding');
         setIsNavigating(true);
         router.replace('/auth/onboarding');
         setTimeout(() => setIsNavigating(false), 500);
       }
-      return; // Do not process further redirects until onboarding is done
+      return;
     }
-    
-    // 2) If onboarding is done but user not signed in, send to login
-    if (!user && !currentRoute.startsWith('auth/')) {
-      console.log('Redirecting to login');
+    if (!currentRoute.startsWith('auth/')) {
       setIsNavigating(true);
       router.replace('/auth/login');
       setTimeout(() => setIsNavigating(false), 500);
       return;
     }
-    
-    // 3) After login, if no PIN bound for this user, go to PIN setup.
-    if (user && !isPinSet && currentRoute !== 'auth/pin-setup') {
-      console.log('Redirecting to pin setup');
-      setIsNavigating(true);
-      router.replace('/auth/pin-setup');
-      setTimeout(() => setIsNavigating(false), 500);
-      return;
-    }
-    
-    // If PIN is set and we somehow remain on pin-setup, proceed to biometrics setup screen
-    if (user && isPinSet && currentRoute === 'auth/pin-setup') {
-      console.log('Redirecting to biometrics setup');
-      setIsNavigating(true);
-      router.replace('/auth/biometrics-setup');
-      setTimeout(() => setIsNavigating(false), 500);
-      return;
-    }
-    
-  if (user && isPinSet && currentRoute.startsWith('auth/') && 
-        currentRoute !== 'auth/biometrics-setup' && currentRoute !== 'auth/pin-setup' && currentRoute !== 'auth/app-unlock') {
-      console.log('Redirecting to tabs from auth screen');
-      setIsNavigating(true);
-      router.replace('/(tabs)');
-      setTimeout(() => setIsNavigating(false), 500);
-      return;
-    }
-    
-  if (user && isPinSet && !currentRoute) {
-      console.log('Redirecting to tabs (default)');
-      setIsNavigating(true);
-      router.replace('/(tabs)');
-      setTimeout(() => setIsNavigating(false), 500);
-      return;
-    }
-  }, [navigationReady, seenOnboarding, user, isPinSet, segments, router, isNavigating, rootNav?.key]);
+  }, [navigationReady, isNavigating, rootNav?.key, segments, user, isBvnVerified, isPinSet, seenOnboarding]);
 
-  // While locked, navigate to app unlock screen
+  // Existing user lock screen
   React.useEffect(() => {
     if (!navigationReady || isNavigating) return;
-    
     const currentRoute = segments.join('/') || '';
     const onAuthScreen = currentRoute.startsWith('auth/');
-    
     if (user && isPinSet && !onAuthScreen && !hasUnlockedThisSession && currentRoute !== 'auth/app-unlock') {
-      console.log('Redirecting to app unlock');
       setIsNavigating(true);
       router.replace('/auth/app-unlock');
       setTimeout(() => setIsNavigating(false), 500);
       return;
     }
-    
-    // Check if user has unlocked in another screen (like auth/app-unlock)
     if (user && isPinSet && currentRoute === 'auth/app-unlock') {
       checkSessionUnlock();
     }
-  }, [navigationReady, user, isPinSet, hasUnlockedThisSession, segments, isNavigating]);
+  }, [navigationReady, isNavigating, segments, user, isPinSet, hasUnlockedThisSession]);
 
-  // Monitor for session unlock changes
+  // After unlock, go to tabs
   React.useEffect(() => {
     if (!navigationReady || isNavigating) return;
-    
     const currentRoute = segments.join('/') || '';
-    
-    // If we're on unlock screen and session is now unlocked, go to tabs
     if (hasUnlockedThisSession && currentRoute === 'auth/app-unlock') {
-      console.log('Session unlocked, redirecting to tabs');
       setIsNavigating(true);
       router.replace('/(tabs)');
       setTimeout(() => setIsNavigating(false), 500);
     }
-  }, [hasUnlockedThisSession, navigationReady, segments, isNavigating]);
+  }, [hasUnlockedThisSession, navigationReady, isNavigating, segments]);
 
-  // Show loading while initializing (keep navigator mounted during redirects)
   if (!navigationReady || !rootNav?.key) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#151718' : '#fff' }} edges={['left', 'right', 'bottom']}>
@@ -277,10 +261,14 @@ function AuthNavigator() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{animation: 'fade_from_bottom', headerShown: false}}>
+      <Stack screenOptions={{ animation: 'fade_from_bottom', headerShown: false }}>
         <Stack.Screen name="auth/onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="auth/login" options={{ headerShown: false }} />
         <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/verify-email" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/bvn-entry" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/bvn-phone" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/bvn-otp" options={{ headerShown: false }} />
         <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="auth/pin-setup" options={{ headerShown: false }} />
         <Stack.Screen name="auth/biometrics-setup" options={{ headerShown: false }} />
@@ -298,7 +286,6 @@ function AuthNavigator() {
 }
 
 export default Sentry.wrap(function RootLayout() {
-  // Keep splash visible until app is ready
   React.useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {});
   }, []);

@@ -1,6 +1,6 @@
 import { useThemeColor } from '@/hooks/useThemeColor';
 import React from 'react';
-import { StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
 import FSActivityLoader from './FSActivityLoader';
 
 export type ButtonVariant = 'white' | 'dark' | 'coral' | 'outline';
@@ -11,8 +11,8 @@ interface ButtonProps {
   variant?: ButtonVariant;
   disabled?: boolean;
   loading?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export default function AppButton({

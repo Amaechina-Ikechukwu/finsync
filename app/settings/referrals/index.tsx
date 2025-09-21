@@ -27,7 +27,7 @@ export default function ReferralScreen() {
     (async () => {
       setLoading(true);
       const res = await referralService.getReferralCode();
-      console.log({res})
+ 
       if (res.success && res?.code) {
         setCode(res.code);
       } else {

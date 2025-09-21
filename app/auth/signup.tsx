@@ -4,7 +4,7 @@ import AppButton from '@/components/ui/AppButton';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { auth } from '@/firebase';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -43,15 +43,14 @@ export default function SignupScreen() {
       setLoading(true);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Send email verification
-      await sendEmailVerification(userCredential.user);
-      setEmailSent(true);
-      showNotification('Account created! Please check your email to verify your account.', 'success');
-      
-      // Navigation will be handled by root layout after email verification
+  // Send email verification then go to verify screen
+  await sendEmailVerification(userCredential.user);
+  setEmailSent(true);
+  showNotification('Account created! Please verify your email.', 'success');
+  router.replace('/auth/verify-email');
     } catch (error: any) {
       console.error('Sign up error:', error);
-      showNotification(error.message || 'Failed to create account', 'error');
+      showNotification('Failed to create account', 'error');
     } finally {
       setLoading(false);
     }
@@ -122,14 +121,14 @@ export default function SignupScreen() {
             <ThemedTextInput
               placeholder="Enter strong password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={setPassword} textContentType='password'
               secureTextEntry autoCapitalize='none'
             />
             <ThemedTextInput
               placeholder="Confirm password"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry autoCapitalize='none'
+              secureTextEntry autoCapitalize='none' textContentType='password'
             />
             <AppButton
               title={loading ? "Creating Account..." : "Continue"}
@@ -143,7 +142,7 @@ export default function SignupScreen() {
         
         <View style={styles.signupContainer}>
           <Text style={[styles.signupText, { color: textColor }]}>Already have an account? </Text>
-          <Link href="/login" asChild>
+          <Link href="/auth/login" asChild>
             <TouchableOpacity>
               <Text style={[styles.signupLink, { color: textColor }]}>Sign In</Text>
             </TouchableOpacity>
@@ -157,15 +156,16 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    // justifyContent: 'center',
+    // alignItems: 'center',
     
   },
   inner: {
+      flex: 1,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 120,
+    // marginTop: 120,
     padding:20
   },
   title: {

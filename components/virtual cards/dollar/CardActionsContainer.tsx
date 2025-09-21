@@ -33,7 +33,7 @@ export default function CardActionsContainer({
     try {
       const res = await dollarCardService.getFreezeStatus();
       if (res.success && res.data) {
-        console.log(JSON.stringify(res.data,null,2))
+ 
         const status = String(res.data.status || '').toLowerCase();
         const frozen = Boolean(res.data.frozen) || (!!status && status !== 'active');
         setIsFrozen(Boolean(frozen));
@@ -96,7 +96,7 @@ export default function CardActionsContainer({
             // Always re-check from server and set UI from that
             const check = await dollarCardService.getFreezeStatus();
             if (check.success && check.data) {
-              console.log({check})
+          
               const status = String(check.data.status || '').toLowerCase();
               const frozen = Boolean(check.data.frozen) || (!!status && status !== 'active');
               setIsFrozen(Boolean(frozen));

@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/ThemedView';
 import AppButton from '@/components/ui/AppButton';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { transferService } from '@/services/apiService';
+import { bvnService } from '@/services/apiService';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
@@ -44,19 +44,19 @@ export default function BvnEntryScreen() {
     setLoading(true);
     
     try {
-      const response = await transferService.verifyBvn({ bvn });
+      const response = await bvnService.start({ bvn });
       
       if (response.success && response.data) {
-        showNotification(response.message || 'BVN verification successful', 'success');
+        showNotification(response.message || 'BVN verification started', 'success');
         // Navigate to phone verification screen with BVN data
         router.push({
           pathname: '/auth/bvn-phone',
           params: { 
             bvn: bvn,
             sessionId: response.data.sessionId,
-            maskedPhone: response.data.maskedPhone,
+            maskedPhone: response.data.maskedPhone || `********${response.data.lastThree ?? ''}`,
             name: response.data.name,
-            message:response.message
+            message: response.message || ''
           }
         });
       } else {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   inner: {
     width: '100%',
-    maxWidth: 400,
+    // maxWidth: 400,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,

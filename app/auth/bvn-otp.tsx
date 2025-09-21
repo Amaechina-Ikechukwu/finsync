@@ -4,16 +4,18 @@ import { ThemedView } from '@/components/ThemedView';
 import AppButton from '@/components/ui/AppButton';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { bvnService } from '@/services/apiService';
 import { useAppStore } from '@/store/appStore';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function BvnOtpScreen() {
-  const { bvn, phoneNumber } = useLocalSearchParams<{ bvn: string; phoneNumber: string }>();
+  const { bvn, phoneNumber, sessionId, otpId: initialOtpId } = useLocalSearchParams<{ bvn: string; phoneNumber: string; sessionId: string; otpId?: string }>();
   const {  showNotification} = useNotification();
   const { markBvnVerified } = useAppStore();
   const [otp, setOtp] = useState('');
+  const [otpId, setOtpId] = useState<string | undefined>(initialOtpId);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -54,38 +56,47 @@ export default function BvnOtpScreen() {
       return;
     }
 
+    if (!otpId) {
+      showNotification('Missing OTP reference. Please resend OTP.', 'error');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // Simulate API call to verify OTP
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mark BVN as verified in the store
-      await markBvnVerified();
-      
-      showNotification('BVN verified successfully!', 'success');
-      
-      // Navigation will be handled by the main layout
-      // The layout will automatically redirect to pin-setup
-    } catch (error) {
-      showNotification('Invalid OTP. Please try again.', 'error');
+      const resp = await bvnService.verifyOtp({ otpCode: otp, otpId });
+      console.log(JSON.stringify(resp,null,2))
+      const verified = resp.data?.verified === true || resp.data?.verification?.bvnVerified === true;
+      if (resp.success && verified) {
+        await markBvnVerified();
+        showNotification(resp.message || 'BVN verified successfully!', 'success');
+        router.replace('/auth/pin-setup');
+      } else {
+        showNotification(resp.message || 'Invalid OTP. Please try again.', 'error');
+      }
+    } catch (error: any) {
+      showNotification(error.message || 'Invalid OTP. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleResendOtp = async () => {
+    if (!sessionId) return;
     setResendLoading(true);
     
     try {
-      // Simulate API call to resend OTP
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      showNotification('OTP resent successfully', 'success');
-      setCountdown(60);
-      setCanResend(false);
-    } catch (error) {
-      showNotification('Failed to resend OTP. Please try again.', 'error');
+      const resp = await bvnService.resendOtp({ sessionId: String(sessionId) });
+      if (resp.success && resp.data) {
+        setOtpId(resp.data.otpId);
+        showNotification(resp.data.message || 'OTP resent successfully', 'success');
+        setCountdown(60);
+        setCanResend(false);
+      } else {
+        showNotification(resp.message || 'Failed to resend OTP. Please try again.', 'error');
+      }
+    } catch (error: any) {
+      showNotification(error.message || 'Failed to resend OTP. Please try again.', 'error');
     } finally {
       setResendLoading(false);
     }
@@ -120,7 +131,7 @@ export default function BvnOtpScreen() {
             Enter OTP
           </ThemedText>
           <ThemedText style={[styles.subtitle, { color: textColor }]}>
-            We've sent a 6-digit code to {formatPhoneNumber(phoneNumber || '')}
+            We've sent a 6-digit code to {formatPhoneNumber(String(phoneNumber) || '')}
           </ThemedText>
         </View>
 
@@ -175,7 +186,7 @@ const styles = StyleSheet.create({
   },
   inner: {
     width: '100%',
-    maxWidth: 400,
+    // maxWidth: 400,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,

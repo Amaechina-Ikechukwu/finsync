@@ -39,7 +39,7 @@ export class ApiClient {
     try {
       const currentUser = auth.currentUser;
       if (currentUser) {
-        return await currentUser.getIdToken();
+        return await currentUser.getIdToken(true);
       }
       return null;
     } catch (error) {
@@ -193,7 +193,7 @@ export class ApiClient {
       const timeoutId = timeoutMs
         ? setTimeout(() => controller.abort(), timeoutMs)
         : (undefined as unknown as ReturnType<typeof setTimeout>);
-console.log({form})
+
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         method: 'POST',
         headers, // <-- do not set Content-Type manually

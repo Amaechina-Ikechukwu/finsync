@@ -1,3 +1,4 @@
+import { auth } from '@/firebase';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -40,7 +41,7 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
   // Function to send token to backend
   const sendTokenToBackend = async (token: string) => {
     try {
-      
+      if(auth.currentUser){
       // Log the payload directly for debugging
       console.log('Sending push token payload:', { token });
       const response = await apiClient.post('/notifications/expo-token', { token });
@@ -48,7 +49,7 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
       
       if (response.success) {
         // showNotification('Push notifications enabled', 'success');
-      }
+      }}
     } catch (error) {
       console.error('Error sending token to backend:', error);
       showNotification('Failed to register push token with server', 'error');
