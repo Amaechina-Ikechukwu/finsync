@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
     elevation: 10, // for Android
   },
   keyText: {
-    fontSize: 28,
+    fontSize: 24,
+    textAlign:"center"
   },
 });

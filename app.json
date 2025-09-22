@@ -35,12 +35,10 @@
       "googleServicesFile": "./google-services.json"
     },
     "androidStatusBar": {
-      "translucent": true,
-      "barStyle": "light-content"
+      "translucent": true
     },
     "androidNavigationBar": {
-      "backgroundColor": "#00000000",
-      "barStyle": "light-content"
+      "visible": "sticky-immersive"
     },
     "notification": {
       "icon": "./assets/images/icon-light.png",
@@ -88,7 +86,8 @@
           "project": "finsync",
           "organization": "march-e0"
         }
-      ]
+      ],
+      "./plugins/android-edge-to-edge-and-orientation-fixes.js"
     ],
     "experiments": {
       "typedRoutes": true

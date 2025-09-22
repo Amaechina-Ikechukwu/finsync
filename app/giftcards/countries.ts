@@ -1,3 +1,11 @@
+// NOTE: This file lives under app/ and is treated as a route by expo-router.
+// To avoid route warnings, export a default component and re-export COUNTRIES
+// from constants for any module consumers.
+export { COUNTRIES } from '@/constants/countries';
+
+// The COUNTRIES constant is re-exported from constants/countries.ts
+// Keeping the below commented reference for clarity.
+/*
 // List of all countries in the world
 export const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
@@ -21,3 +29,4 @@ export const COUNTRIES = [
   'Tuvalu', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States of America', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Venezuela',
   'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
 ];
+*/

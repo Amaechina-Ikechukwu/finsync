@@ -21,10 +21,19 @@ const firebaseConfig = {
 
 // Validate that all required config values are present
 const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
+const missingKeys = [];
 for (const key of requiredKeys) {
     if (!firebaseConfig[key as keyof typeof firebaseConfig]) {
         console.error(`Firebase config missing: ${key}`);
+        missingKeys.push(key);
     }
+}
+
+if (missingKeys.length > 0) {
+    console.error('Missing Firebase config keys:', missingKeys);
+    console.error('Please ensure you have a .env file with all required Firebase configuration values');
+} else {
+    console.log('Firebase configuration loaded successfully');
 }
 
 

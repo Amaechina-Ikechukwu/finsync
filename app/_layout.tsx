@@ -12,9 +12,12 @@ import FSActivityLoader from '@/components/ui/FSActivityLoader';
 import { auth } from '@/firebase';
 import { SessionProvider } from '@/hooks/useAuth';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { accountService } from '@/services/apiService';
 import { getSessionUnlocked, isPasscodeSet, setSessionUnlocked } from '@/utils/security';
 import * as Sentry from '@sentry/react-native';
 import * as SecureStore from 'expo-secure-store';
+import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,6 +51,10 @@ function AuthNavigator() {
   const [navigationReady, setNavigationReady] = React.useState(false);
   const [isNavigating, setIsNavigating] = React.useState(false);
   const [hasUnlockedThisSession, setHasUnlockedThisSession] = React.useState(false);
+  const [initialDecisionDone, setInitialDecisionDone] = React.useState(false);
+  const firstAuthHandledRef = React.useRef(false);
+  const [minDelayPassed, setMinDelayPassed] = React.useState(false);
+  const minDelayRef = React.useRef<number | null>(null);
 
   // Check session unlock status from persistent storage
   const checkSessionUnlock = async () => {
@@ -101,13 +108,45 @@ function AuthNavigator() {
         
         // Setup auth listener
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          console.log('Auth state changed:', { user: !!firebaseUser, emailVerified: firebaseUser?.emailVerified });
           if (mounted) {
             setUser(firebaseUser);
+            // Reset lock state when auth user changes
+            setHasUnlockedThisSession(false);
+            // Clear session unlock from storage when user changes
+            await setSessionUnlocked(false);
+
+            // If logged in, fetch profile to know BVN status
+            if (firebaseUser) {
+              try {
+                const res = await accountService.getUserProfile();
+                if (res?.success && res.data) {
+                  const verified = !!(res.data as any).bvnVerified;
+                  setIsBvnVerified(verified);
+                  await SecureStore.setItemAsync('bvnVerified', verified ? 'true' : 'false');
+                }
+              } catch (e) {
+                // Silent fallback to cached value
+              }
+            } else {
+              setIsBvnVerified(false);
+            }
             setIsLoading(false);
-      // Reset lock state when auth user changes
-      setHasUnlockedThisSession(false);
-      // Clear session unlock from storage when user changes
-      await setSessionUnlocked(false);
+            // Mark that we've processed the initial auth state and related flags.
+            if (!firstAuthHandledRef.current) {
+              firstAuthHandledRef.current = true;
+              setInitialDecisionDone(true);
+              // enforce a short minimum loader time to avoid UI flashes
+              setMinDelayPassed(false);
+              if (minDelayRef.current) {
+                clearTimeout(minDelayRef.current);
+                minDelayRef.current = null;
+              }
+              minDelayRef.current = setTimeout(() => {
+                setMinDelayPassed(true);
+                minDelayRef.current = null;
+              }, 300) as any as number;
+            }
           }
         });
         
@@ -117,6 +156,11 @@ function AuthNavigator() {
         };
       } catch (e) {
         console.error('Auth initialization error:', e);
+        console.log('Firebase config check:', {
+          hasApiKey: !!process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+          hasAuthDomain: !!process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          hasProjectId: !!process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+        });
         if (mounted) setIsLoading(false);
       }
     };
@@ -137,8 +181,20 @@ function AuthNavigator() {
         const onboarded = await SecureStore.getItemAsync('seenOnboarding');
         setSeenOnboarding(onboarded === 'true');
         try {
-          const bvnFlag = await SecureStore.getItemAsync('bvnVerified');
-          setIsBvnVerified(bvnFlag === 'true');
+          if (user) {
+            const res = await accountService.getUserProfile();
+            if (res?.success && res.data) {
+              const verified = !!(res.data as any).bvnVerified;
+              setIsBvnVerified(verified);
+              await SecureStore.setItemAsync('bvnVerified', verified ? 'true' : 'false');
+            } else {
+              const bvnFlag = await SecureStore.getItemAsync('bvnVerified');
+              setIsBvnVerified(bvnFlag === 'true');
+            }
+          } else {
+            const bvnFlag = await SecureStore.getItemAsync('bvnVerified');
+            setIsBvnVerified(bvnFlag === 'true');
+          }
         } catch {}
         if (user) {
           const pinSet = await isPasscodeSet();
@@ -154,21 +210,25 @@ function AuthNavigator() {
     }
   }, [navigationReady, segments]);
 
-  // Enable navigation once fonts/auth ready
+  // Enable navigation once auth ready (don't block on fonts)
   React.useEffect(() => {
-    if (loaded && !isLoading) {
+    console.log('Navigation readiness check:', { loaded, isLoading, user: !!user, seenOnboarding, isPinSet, isBvnVerified });
+    if (!isLoading) {
+      console.log('Setting navigation ready to true');
       setNavigationReady(true);
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [loaded, isLoading]);
+  }, [isLoading, loaded]);
 
   // Main gating
   React.useEffect(() => {
     if (!navigationReady || isNavigating || !rootNav?.key) return;
     const currentRoute = segments.join('/') || '';
+    console.log('Navigation gating check:', { currentRoute, user: !!user, seenOnboarding, isPinSet, isBvnVerified });
 
     if (user) {
       if (!user.emailVerified && currentRoute !== 'auth/verify-email') {
+        console.log('Redirecting to email verification');
         setIsNavigating(true);
         router.replace('/auth/verify-email');
         setTimeout(() => setIsNavigating(false), 500);
@@ -176,12 +236,14 @@ function AuthNavigator() {
       }
       const onBvnFlow = currentRoute === 'auth/bvn-entry' || currentRoute === 'auth/bvn-phone' || currentRoute === 'auth/bvn-otp';
       if (user.emailVerified && !isBvnVerified && !onBvnFlow) {
+        console.log('Redirecting to BVN entry');
         setIsNavigating(true);
         router.replace('/auth/bvn-entry');
         setTimeout(() => setIsNavigating(false), 500);
         return;
       }
       if (user.emailVerified && isBvnVerified && !isPinSet && currentRoute !== 'auth/pin-setup') {
+        console.log('Redirecting to PIN setup');
         setIsNavigating(true);
         router.replace('/auth/pin-setup');
         setTimeout(() => setIsNavigating(false), 500);
@@ -193,12 +255,14 @@ function AuthNavigator() {
         currentRoute !== 'auth/biometrics-setup' &&
         currentRoute !== 'auth/app-unlock'
       ) {
+        console.log('Redirecting to main app (tabs)');
         setIsNavigating(true);
         router.replace('/(tabs)');
         setTimeout(() => setIsNavigating(false), 500);
         return;
       }
       if (isPinSet && !currentRoute) {
+        console.log('No current route, redirecting to main app');
         setIsNavigating(true);
         router.replace('/(tabs)');
         setTimeout(() => setIsNavigating(false), 500);
@@ -208,8 +272,10 @@ function AuthNavigator() {
     }
 
     // Not signed in
+    console.log('User not signed in, checking onboarding');
     if (!seenOnboarding) {
       if (currentRoute !== 'auth/onboarding' && currentRoute !== 'auth/login') {
+        console.log('Redirecting to onboarding');
         setIsNavigating(true);
         router.replace('/auth/onboarding');
         setTimeout(() => setIsNavigating(false), 500);
@@ -217,6 +283,7 @@ function AuthNavigator() {
       return;
     }
     if (!currentRoute.startsWith('auth/')) {
+      console.log('Redirecting to login');
       setIsNavigating(true);
       router.replace('/auth/login');
       setTimeout(() => setIsNavigating(false), 500);
@@ -229,12 +296,32 @@ function AuthNavigator() {
     if (!navigationReady || isNavigating) return;
     const currentRoute = segments.join('/') || '';
     const onAuthScreen = currentRoute.startsWith('auth/');
+
+    // If we're headed to main app but haven't unlocked in-memory yet,
+    // double-check persistent storage to avoid racing redirects immediately after unlock.
     if (user && isPinSet && !onAuthScreen && !hasUnlockedThisSession && currentRoute !== 'auth/app-unlock') {
-      setIsNavigating(true);
-      router.replace('/auth/app-unlock');
-      setTimeout(() => setIsNavigating(false), 500);
+      (async () => {
+        try {
+          const unlocked = await checkSessionUnlock();
+          if (!unlocked) {
+            setIsNavigating(true);
+            router.replace('/auth/app-unlock');
+            setTimeout(() => setIsNavigating(false), 500);
+            return;
+          }
+          // If storage shows unlocked, update in-memory state and don't redirect
+          setHasUnlockedThisSession(true);
+        } catch (e) {
+          // If storage check fails, fall back to redirecting to app-unlock
+          setIsNavigating(true);
+          router.replace('/auth/app-unlock');
+          setTimeout(() => setIsNavigating(false), 500);
+          return;
+        }
+      })();
       return;
     }
+
     if (user && isPinSet && currentRoute === 'auth/app-unlock') {
       checkSessionUnlock();
     }
@@ -251,7 +338,7 @@ function AuthNavigator() {
     }
   }, [hasUnlockedThisSession, navigationReady, isNavigating, segments]);
 
-  if (!navigationReady || !rootNav?.key) {
+  if (!navigationReady || !rootNav?.key || !initialDecisionDone || !minDelayPassed) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#151718' : '#fff' }} edges={['left', 'right', 'bottom']}>
         <FSActivityLoader />
@@ -288,11 +375,15 @@ function AuthNavigator() {
 export default Sentry.wrap(function RootLayout() {
   React.useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {});
+    // Ensure the app draws edge-to-edge with a transparent system UI background on Android
+    SystemUI.setBackgroundColorAsync('transparent').catch(() => {});
   }, []);
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
+        {/* Use status bar styles without setting explicit colors to avoid deprecated APIs */}
+        <StatusBar translucent style="auto" />
         <GestureHandlerRootView style={{ flex: 1 }}>
           <InAppNotificationProvider>
             <SessionProvider>

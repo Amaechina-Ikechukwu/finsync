@@ -13,7 +13,7 @@ import { CameraView, FlashMode, useCameraPermissions } from 'expo-camera';
 import { CameraType } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function KycNinScreen() {
@@ -101,8 +101,14 @@ export default function KycNinScreen() {
   }
 
   return (
-    <SafeAreaView style={{flex:1}}>
-        <ThemedView style={[styles.container, { backgroundColor: bg }]}>
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()} accessible={false}>
+          <ThemedView style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.header, { borderBottomColor: border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <IconSymbol name="chevron.left" size={24} color={text} />
@@ -118,6 +124,9 @@ export default function KycNinScreen() {
           value={nin}
           onChangeText={(t) => setNin(t.replace(/[^0-9]/g, '').slice(0, 11))}
           keyboardType="numeric"
+          returnKeyType="done"
+          blurOnSubmit={true}
+          onSubmitEditing={() => Keyboard.dismiss()}
           style={[styles.input, { color: text, borderColor: border }]}
         />
 
@@ -172,7 +181,9 @@ export default function KycNinScreen() {
           </View>
         )}
       </View>
-    </ThemedView>
+          </ThemedView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
     
   );

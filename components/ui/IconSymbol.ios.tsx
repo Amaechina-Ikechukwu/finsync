@@ -1,32 +1,20 @@
-import { SymbolView, SymbolViewProps, SymbolWeight } from 'expo-symbols';
-import { StyleProp, ViewStyle } from 'react-native';
+// On iOS, we unify rendering with MaterialIcons to ensure consistent glyph availability
+// and avoid invisible icons due to SF Symbols name mismatches.
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { StyleProp, TextStyle } from 'react-native';
+import { ICON_MAPPING, IconSymbolName } from './iconMapping';
 
 export function IconSymbol({
   name,
   size = 24,
   color,
   style,
-  weight = 'regular',
 }: {
-  name: SymbolViewProps['name'];
+  name: IconSymbolName;
   size?: number;
   color: string;
-  style?: StyleProp<ViewStyle>;
-  weight?: SymbolWeight;
+  style?: StyleProp<TextStyle>;
 }) {
-  return (
-    <SymbolView
-      weight={weight}
-      tintColor={color}
-      resizeMode="scaleAspectFit"
-      name={name}
-      style={[
-        {
-          width: size,
-          height: size,
-        },
-        style,
-      ]}
-    />
-  );
+  const glyph = ICON_MAPPING[name] ?? 'help-outline';
+  return <MaterialIcons color={color} size={size} name={glyph} style={style} />;
 }
