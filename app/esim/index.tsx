@@ -36,12 +36,7 @@ export default function EsimIndexScreen() {
       setLoading(true);
       setError(null);
 
-      if (USE_MOCK_ESIMS) {
-        // Simulate network latency
-        await new Promise((r) => setTimeout(r, 300));
-        setItems(sampleEsims);
-        return;
-      }
+     
 
       const response = await esimService.getPurchasedEsims();
       if (response && (response as any).success === true && Array.isArray((response as any).data)) {

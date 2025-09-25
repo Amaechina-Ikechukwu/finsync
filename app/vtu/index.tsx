@@ -3,6 +3,8 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -257,6 +259,11 @@ export default function BuyAirtime() {
   };
 
   return (
+      <KeyboardAvoidingView
+                    style={{flex: 1}}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+                >
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
@@ -390,6 +397,7 @@ export default function BuyAirtime() {
         />
       </SafeAreaView>
     </ThemedView>
+    </KeyboardAvoidingView>
   );
 }
 

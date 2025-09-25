@@ -22,11 +22,13 @@ export default function CryptoEstimateModal({
   visible,
   onClose,
   onCopy,
+  onConfirm,
 }: {
   estimate: CryptoEstimate | null;
   visible: boolean;
   onClose: () => void;
   onCopy?: (address?: string) => void;
+  onConfirm?: () => void;
 }) {
   const themeText = useThemeColor({}, 'text');
   const bg = useThemeColor({}, 'background');
@@ -46,7 +48,12 @@ export default function CryptoEstimateModal({
             <ThemedText type="title" style={[styles.title, { color: themeText }]}>
               💰 Estimate
             </ThemedText>
-
+ {estimate.note ? (
+              <View>
+              <ThemedText style={styles.note}>Please copy the address below and send the expected amount. Once confirmed, you will be credited.</ThemedText>
+              </View>
+             
+            ) : null}
             <View style={styles.section}>
               <InfoRow label="Coin" value={estimate.coin?.name ?? ''} />
               <InfoRow label="Crypto amount" value={String(estimate.crypto_amount ?? '')} />
@@ -78,9 +85,27 @@ export default function CryptoEstimateModal({
             </View>
 
             {estimate.note ? (
-              <ThemedText style={styles.note}>{estimate.note}</ThemedText>
+              <View>
+                 <ThemedText style={styles.note}>{estimate.note}</ThemedText>
+           
+              </View>
+             
             ) : null}
           </ScrollView>
+
+          {/* Footer: Confirm button */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                if (onConfirm) return onConfirm();
+                return onClose();
+              }}
+              style={[styles.confirmButton, { backgroundColor: '#2d7a2d' }]}
+            >
+              <Text style={styles.confirmButtonText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
         </ThemedView>
       </View>
     </Modal>
@@ -164,4 +189,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   note: { marginTop: 12, color: '#666', fontSize: 13, lineHeight: 18 },
+  footer: {
+    marginTop: 12,
+    marginHorizontal: -20,
+    padding: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e6e6e6',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  confirmButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 10,
+    width:"100%",
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });

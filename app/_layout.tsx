@@ -348,7 +348,14 @@ function AuthNavigator() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ animation: 'fade_from_bottom', headerShown: false }}>
+      <Stack screenOptions={{
+        animation: 'fade_from_bottom',
+        headerShown: false,
+        // Hide iOS back button titles globally to avoid showing route group names like "(tabs)"
+        headerBackTitleVisible: false,
+        headerBackTitle: '',
+        headerBackTitleStyle:{fontSize:12}
+      }}>
         <Stack.Screen name="auth/onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="auth/login" options={{ headerShown: false }} />
         <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
@@ -360,7 +367,8 @@ function AuthNavigator() {
         <Stack.Screen name="auth/pin-setup" options={{ headerShown: false }} />
         <Stack.Screen name="auth/biometrics-setup" options={{ headerShown: false }} />
         <Stack.Screen name="auth/app-unlock" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* Ensure the Tabs route doesn't contribute a back title */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: '' }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       {isNavigating && (

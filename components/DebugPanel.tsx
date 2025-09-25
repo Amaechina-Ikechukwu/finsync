@@ -1,5 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import AppButton from '@/components/ui/AppButton';
+import { auth } from '@/firebase';
+import { addTestNotification } from '@/services/firebaseNotifications';
 import { useAppStore } from '@/store';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -33,6 +35,23 @@ export default function DebugPanel() {
         <AppButton
           title="📬 Test Notifications"
           onPress={fetchUnreadNotificationCount}
+          style={styles.button}
+        />
+        <AppButton
+          title="➕ Push Test DB Notification"
+          onPress={async () => {
+            const uid = auth.currentUser?.uid;
+            if (!uid) {
+              console.warn('No authenticated user. Sign in to push a test notification.');
+              return;
+            }
+            try {
+              const notif = await addTestNotification(uid, 'Wallet update test', 'success');
+              console.log('Pushed test notification:', notif);
+            } catch (e) {
+              console.error('Failed to push test notification:', e);
+            }
+          }}
           style={styles.button}
         />
         

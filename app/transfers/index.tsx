@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -265,12 +267,20 @@ export default function TransfersScreen() {
     );
 
     return (
-        <>
-            <SafeAreaView style={[styles.container, { backgroundColor }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['left', 'right', 'bottom']}> 
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoiding}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+            >
+                       
                 <ScrollView
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="always"
+                    keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'interactive'}
+                    contentInsetAdjustmentBehavior="automatic"
                 >
                     <View style={[styles.header, { borderBottomColor: borderColor }]}>
                         <TouchableOpacity
@@ -400,11 +410,10 @@ export default function TransfersScreen() {
                                 </View>
                             </View>
                         )}
+                        
                     </ThemedView>
-                </ScrollView>
-
-                {selectedBank && verifiedAccount && amount && parseFloat(amount) > 0 && parseFloat(amount) <= userData.amount && (
-                    <View style={[styles.footer, { backgroundColor }]}>
+                        {selectedBank && verifiedAccount && amount && parseFloat(amount) > 0 && parseFloat(amount) <= userData.amount && (
+                    <View style={[styles.footer, { backgroundColor }]}>                    
                         <AppButton
                             title="Continue"
                             onPress={handleContinue}
@@ -413,7 +422,11 @@ export default function TransfersScreen() {
                         />
                     </View>
                 )}
-            </SafeAreaView>
+                </ScrollView>
+
+            
+            
+            </KeyboardAvoidingView>
 
             {/* Bank Selection Modal */}
             <BankSelectionModal
@@ -425,11 +438,14 @@ export default function TransfersScreen() {
                 onBankSelect={handleBankSelect}
                 onSearchChange={setSearchQuery}
             />
-        </>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    keyboardAvoiding: {
+        flex: 1,
+    },
     container: {
         flex: 1,
     },

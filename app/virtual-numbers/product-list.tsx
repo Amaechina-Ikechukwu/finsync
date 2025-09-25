@@ -52,22 +52,38 @@ export default function ProductListScreen() {
       setLoading(true);
       setError(null);
       
-  // Use existing service method; API expects country code param
-  const response = await virtualNumberService.getVirtualNumberPricing(selectedCountry.code);
-      
+  // Backend expects a country slug (e.g., 'nigeria'), not ISO code ('ng')
+  const countrySlug = getCountrySlug(selectedCountry);
+  const response = await virtualNumberService.getVirtualNumberPricing(countrySlug);
+      console.log(JSON.stringify(response,null,2))
       if (response.success && response.data) {
         const payload = (response.data as any)?.data ?? response.data;
         const productList = transformApiData(payload as VirtualNumberProductsByService);
         setProducts(productList);
       } else {
-        setError('Failed to fetch products');
+        setError(response.message || response.error || 'Failed to fetch products');
       }
     } catch (err) {
-      setError('Error fetching products');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Error fetching products: ${msg}`);
       console.error('Error:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Map common ISO codes to backend slugs; fallback to a safe slugified name
+  const getCountrySlug = (country: Country) => {
+    const map: Record<string, string> = {
+      ng: 'nigeria',
+      us: 'united-states',
+      gb: 'united-kingdom',
+      gh: 'ghana',
+      ke: 'kenya',
+      ca: 'canada',
+      in: 'india',
+    };
+    return map[country.code] || country.name.trim().toLowerCase().replace(/\s+/g, '-');
   };
 
   const transformApiData = (data: VirtualNumberProductsByService): VirtualNumberProduct[] => {

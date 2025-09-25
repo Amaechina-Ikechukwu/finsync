@@ -137,12 +137,12 @@ export default function BalanceCard({ userData, balanceVisible, onToggleBalance,
                 <ThemedText style={styles.infoValue}>{userData.bank_name}</ThemedText>
               </View>
               
-              <View style={styles.infoRow}>
+              {/* <View style={styles.infoRow}>
                 <ThemedText style={styles.infoLabel}>Account Status</ThemedText>
                 <ThemedText style={[styles.infoValue, { color: userData.account_status === 'ACTIVE' ? '#4CAF50' : '#FF9800' }]}>
                   {userData.account_status}
                 </ThemedText>
-              </View>
+              </View> */}
             </View>
             
             <TouchableOpacity 

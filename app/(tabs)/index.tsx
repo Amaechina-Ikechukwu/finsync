@@ -111,6 +111,9 @@ export default function HomeScreen() {
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
       if (ageMs > sevenDaysMs) {
         setReferralBannerVisible(false);
+      } else {
+        // Explicitly show the banner for accounts <= 7 days old
+        setReferralBannerVisible(true);
       }
     } catch (e) {
       // On any error determining age, hide the banner
@@ -200,39 +203,7 @@ export default function HomeScreen() {
               onAvatarPress={() => router.push('/settings' as Href)}
             />
 
-            {kycBannerVisible && (
-              <View style={{
-                marginHorizontal: 16,
-                padding: 12,
-                borderRadius: 12,
-                backgroundColor: Palette.warning + '22',
-                borderWidth: 1,
-                borderColor: Palette.warning + '55',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-              }}>
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={{ fontWeight: '600', color: Palette.warning }}>Complete your KYC</ThemedText>
-                  <ThemedText style={{ color: '#666' }}>Verify your identity to unlock all features.</ThemedText>
-                </View>
-                <Pressable
-                  onPress={() => router.push('/settings/kyc-nin' as Href)}
-                  style={{
-                    backgroundColor: Palette.warning,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                  }}
-                >
-                  <ThemedText style={{ color: '#fff', fontWeight: '600' }}>Start</ThemedText>
-                </Pressable>
-                <Pressable onPress={() => setKycBannerVisible(false)}>
-                  <ThemedText style={{ color: '#666' }}>Dismiss</ThemedText>
-                </Pressable>
-              </View>
-            )}
+   
            
 
             {referralBannerVisible && (
@@ -299,11 +270,43 @@ export default function HomeScreen() {
               onToggleBalance={toggleBalanceVisibility}
               scaleAnim={scaleAnim}
             />
-
+         {kycBannerVisible && (
+              <View style={{
+                marginHorizontal: 16,
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: Palette.warning + '22',
+                borderWidth: 1,
+                borderColor: Palette.warning + '55',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={{ fontWeight: '600', color: Palette.warning }}>Complete your KYC</ThemedText>
+                  <ThemedText style={{ color: '#666' }}>Verify your identity to unlock all features.</ThemedText>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/settings/kyc-nin' as Href)}
+                  style={{
+                    backgroundColor: Palette.warning,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                  }}
+                >
+                  <ThemedText style={{ color: '#fff', fontWeight: '600' }}>Start</ThemedText>
+                </Pressable>
+                <Pressable onPress={() => setKycBannerVisible(false)}>
+                  <ThemedText style={{ color: '#666' }}>Dismiss</ThemedText>
+                </Pressable>
+              </View>
+            )}
             {/* Feature Banner Carousel */}
             <FeatureBannerCarousel />
 
-            {/* <DebugPanel /> */}
+       
 {/* <DataWipeDemo/> */}
             <AccountDetailsModal 
               userData={userData}
