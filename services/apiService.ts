@@ -873,8 +873,8 @@ export const accountService = {
     return await apiClient.get<UserProfile>('/accounts/me');
   },
   
-  // Submit identity (NIN) details
-  submitIdentity: async (payload: { ninFront: string; ninBack: string; nin: string }): Promise<ApiResponse<{ verified?: boolean }>> => {
+  // Submit identity (NIN) details (ninBack optional to allow front-only early submission)
+  submitIdentity: async (payload: { ninFront: string; nin: string; ninBack?: string }): Promise<ApiResponse<{ verified?: boolean }>> => {
     return await apiClient.post<{ verified?: boolean }>('/accounts/identity/submit', payload);
   },
   

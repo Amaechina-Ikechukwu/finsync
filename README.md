@@ -177,6 +177,9 @@ Firebase configuration is available in `firebase.ts` for additional features lik
 - Automatic session timeout
 - Secure credential storage
 
+#### Inactivity Lock
+If the app stays in the background or inactive state for 5 minutes or longer, the session is automatically re-locked. On returning to the app the user is redirected to the unlock screen (`/auth/app-unlock`) and must re-enter their PIN (or biometrics if enabled). The last background timestamp is persisted using SecureStore so even if the OS kills the app while backgrounded, the inactivity period is still enforced on next launch. Adjust the timeout by changing `INACTIVITY_LOCK_MS` in `app/_layout.tsx`.
+
 ### Smart UX
 - Network auto-detection for VTU services
 - Skeleton loading screens

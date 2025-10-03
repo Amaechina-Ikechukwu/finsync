@@ -83,6 +83,12 @@ export const ICON_MAPPING: Record<string, ComponentProps<typeof MaterialIcons>['
   'add-reaction': 'add-reaction',
   'qr.code': 'qr-code',
   'network': 'network-check',
+  // Added for KYC NIN capture controls
+  'camera': 'photo-camera',
+  'image': 'image',
+  // Potential future distinct flash modes (currently using single 'flash')
+  'flash.off': 'flash-off',
+  'flash.auto': 'flash-auto',
 } as const;
 
 export type IconSymbolName = keyof typeof ICON_MAPPING | string;

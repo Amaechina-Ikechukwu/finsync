@@ -11,7 +11,7 @@ import { Picker } from '@react-native-picker/picker';
 import { State as CSCState } from 'country-state-city';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import { ActionSheetIOS, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 // require() used because package lacks type declarations
 // @ts-ignore
 const NaijaStates: any = require('naija-state-local-government');
@@ -21,6 +21,45 @@ type RouteParams = {
 };
 
 export default function CreateNairaCardCustomer() {
+  // tiny cross-platform picker: iOS uses ActionSheetIOS for a consistent sheet-style selector,
+  // other platforms (Android) use the native Picker component.
+  const CrossPlatformPicker = ({ selectedValue, onValueChange, items, style, textColor }: any) => {
+    if (Platform.OS === 'ios') {
+      const selected = items.find((it: any) => it.value === selectedValue);
+      const label = selected ? selected.label : (items[0]?.label ?? 'Select');
+
+      const open = () => {
+        const optionLabels = items.map((it: any) => it.label);
+        const values = items.map((it: any) => it.value);
+        // add cancel at end
+        optionLabels.push('Cancel');
+        const cancelIndex = optionLabels.length - 1;
+        ActionSheetIOS.showActionSheetWithOptions(
+          { options: optionLabels, cancelButtonIndex: cancelIndex },
+          (buttonIndex) => {
+            if (buttonIndex === cancelIndex) return;
+            const val = values[buttonIndex];
+            onValueChange?.(val);
+          }
+        );
+      };
+
+      return (
+        <TouchableOpacity onPress={open} style={[{ justifyContent: 'center', height: 44, paddingHorizontal: 12 }, style]}>
+          <ThemedText style={{ color: textColor }}>{label}</ThemedText>
+        </TouchableOpacity>
+      );
+    }
+
+    // Android (and others) - render native Picker
+    return (
+      <Picker selectedValue={selectedValue} onValueChange={onValueChange} style={style} dropdownIconColor={textColor}>
+        {items.map((it: any) => (
+          <Picker.Item key={it.value} label={it.label} value={it.value} />
+        ))}
+      </Picker>
+    );
+  };
   const [form, setForm] = useState({
     first_name: '',
     middle_name: '',
@@ -241,20 +280,16 @@ export default function CreateNairaCardCustomer() {
                   {statesLoading ? (
                     <View style={{ height: 44, justifyContent: 'center', alignItems: 'center' }}><FSActivityLoader /></View>
                   ) : (
-                    <Picker
+                    <CrossPlatformPicker
                       selectedValue={form.state_iso}
-                      onValueChange={(val) => {
+                      onValueChange={(val: any) => {
                         const found = statesList.find((s) => s.isoCode === val);
                         setForm((s) => ({ ...s, state: found ? found.name : '', state_iso: val }));
                       }}
+                      items={[{ label: 'Select state', value: '' }, ...statesList.map((s) => ({ label: s.name, value: s.isoCode }))]}
                       style={[styles.picker, { color: pickerText }]}
-                      dropdownIconColor={pickerText}
-                    >
-                      <Picker.Item label="Select state" value="" />
-                      {statesList.map((s) => (
-                        <Picker.Item key={s.isoCode} label={s.name} value={s.isoCode} />
-                      ))}
-                    </Picker>
+                      textColor={pickerText}
+                    />
                   )}
                 </View>
               </View>
@@ -271,16 +306,13 @@ export default function CreateNairaCardCustomer() {
                     {lgasLoading ? (
                       <View style={{ height: 44, justifyContent: 'center', alignItems: 'center' }}><FSActivityLoader /></View>
                     ) : (
-                      <Picker
+                      <CrossPlatformPicker
                         selectedValue={form.lga}
-                        onValueChange={(val) => setForm((s) => ({ ...s, lga: val }))}
+                        onValueChange={(val: any) => setForm((s) => ({ ...s, lga: val }))}
+                        items={[{ label: 'Select LGA', value: '' }, ...lgasList.map((l) => ({ label: l.name, value: l.name }))]}
                         style={[styles.picker, { color: pickerText }]}
-                      >
-                        <Picker.Item label="Select LGA" value="" />
-                        {lgasList.map((l) => (
-                          <Picker.Item key={l.name} label={l.name} value={l.name} />
-                        ))}
-                      </Picker>
+                        textColor={pickerText}
+                      />
                     )}
                   </View>
                 </View>

@@ -73,7 +73,8 @@ export default function SizzleConfirmationScreen() {
             setIsProcessing(true);
 
             const orderPayload = {
-                serviceId: orderData.service.service,
+                // API expects service_id (snake_case) per SizzleOrderRequest
+                service_id: orderData.service.service,
                 link: orderData.socialAccountLink,
                 email: orderData.email,
                 quantity: orderData.quantity,
@@ -81,14 +82,13 @@ export default function SizzleConfirmationScreen() {
             };
 
             const response = await sizzleService.placeOrder(orderPayload);
+            const rawMsg = (response.message || (response as any)?.error || '').toString().toLowerCase();
+            const isInvalidPin = !response.success && /(invalid|incorrect) (transaction )?pin/.test(rawMsg);
 
             if (response.success && response.data) {
-                // Update balance if available
                 if (response.data.amount && userData.amount) {
                     updateBalance(userData.amount - response.data.amount);
                 }
-
-                // Navigate to success screen
                 router.replace({
                     pathname: '/sizzle/success',
                     params: {
@@ -99,16 +99,21 @@ export default function SizzleConfirmationScreen() {
                         })
                     }
                 });
+                setShowPinModal(false);
+            } else if (isInvalidPin) {
+                showNotification('Invalid transaction PIN. Please try again.', 'error');
+                // keep modal open for retry
             } else {
                 showNotification(response.message || 'Order failed. Please try again.', 'error');
+                setShowPinModal(false);
             }
         } catch (error: any) {
             console.error('Order error:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Network error. Please try again.';
             showNotification(errorMessage, 'error');
+            // keep modal open to allow retry if it's a recoverable error (e.g., network)
         } finally {
             setIsProcessing(false);
-            setShowPinModal(false);
         }
     };
 
@@ -246,7 +251,7 @@ export default function SizzleConfirmationScreen() {
                                 <ThemedText style={[styles.detailLabel, { color: secondaryTextColor }]}>
                                     Amount to be charged:
                                 </ThemedText>
-                                <ThemedText style={[styles.detailValue, { color: Palette.coral }]}>
+                                <ThemedText style={[styles.detailValue, { color: Palette.error }]}>
                                     -{formatCurrency(orderData.totalAmount)}
                                 </ThemedText>
                             </View>
@@ -263,9 +268,9 @@ export default function SizzleConfirmationScreen() {
 
                         {/* Insufficient balance warning */}
                         {userData.amount && ((userData.amount * 100) < orderData.totalAmount) && (
-                            <View style={[styles.warningContainer, { backgroundColor: `${Palette.coral}20`, borderColor: Palette.coral }]}>
-                                <IconSymbol name="exclamationmark.triangle.fill" size={20} color={Palette.coral} />
-                                <ThemedText style={[styles.warningText, { color: Palette.coral }]}>
+                            <View style={[styles.warningContainer, { backgroundColor: `${Palette.error}20`, borderColor: Palette.error }]}>
+                                <IconSymbol name="exclamationmark.triangle.fill" size={20} color={Palette.error} />
+                                <ThemedText style={[styles.warningText, { color: Palette.error }]}>
                                     Insufficient balance. Please fund your account.
                                 </ThemedText>
                             </View>
@@ -300,7 +305,7 @@ export default function SizzleConfirmationScreen() {
                             onPress={handleConfirmOrder}
                             variant="dark"
                             style={styles.confirmButton}
-                            disabled={userData.amount && ((userData.amount * 100) < orderData.totalAmount)}
+                            disabled={!!userData.amount && ((userData.amount * 100) < orderData.totalAmount)}
                         />
                     </View>
                 </View>

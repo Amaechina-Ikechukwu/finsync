@@ -1,13 +1,13 @@
 import { auth } from '@/firebase';
-import { clearPasscode, getBiometricsEnabled, isPasscodeSet, setBiometricsEnabled, setPasscode, verifyPasscode } from '@/utils/security';
+import { getBiometricsEnabled, isPasscodeSet, setBiometricsEnabled, setPasscode, verifyPasscode } from '@/utils/security';
 import * as SecureStore from 'expo-secure-store';
 import {
-    createUserWithEmailAndPassword,
-    signOut as firebaseSignOut,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    User,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  User,
 } from 'firebase/auth';
 import React from 'react';
 import { useStorageState } from './useStorageState';
@@ -94,11 +94,22 @@ export function SessionProvider(props: React.PropsWithChildren) {
     setIsPinSet(set);
   }, []);
 
+  // Refresh PIN status whenever the authenticated session changes.
+  // Important: we explicitly toggle loadingPin back to true so that navigation
+  // gates don't prematurely assume the PIN is not set and redirect the user to
+  // the PIN setup screen before we finish reading SecureStore.
   React.useEffect(() => {
-    (async () => {
-      await refreshPinStatus();
-      setLoadingPin(false);
-    })();
+    let cancelled = false;
+    const load = async () => {
+      setLoadingPin(true); // re-enter loading state for fresh session
+      try {
+        await refreshPinStatus();
+      } finally {
+        if (!cancelled) setLoadingPin(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [session, refreshPinStatus]);
 
   // Load biometrics enabled flag
@@ -131,10 +142,12 @@ export function SessionProvider(props: React.PropsWithChildren) {
   };
 
   const signOut = async () => {
+    // Sign out of Firebase but intentionally DO NOT clear the stored app passcode.
+    // Requirement: logging out should not clear the app code so user doesn't need to re-create it.
     await firebaseSignOut(auth);
     setSession(null);
     setUser(null);
-    await clearPasscode();
+    // Mark in-memory flag false for current (now signed-out) context so auth flows don't assume a PIN for unauthenticated user.
     setIsPinSet(false);
   };
 

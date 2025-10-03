@@ -9,6 +9,7 @@ import { getVirtualNumberCountrySlug, slugifyCountryName, VIRTUAL_NUMBER_COUNTRI
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useCustomAlert } from '@/hooks/useCustomAlert';
 import { VirtualNumberProductsByService, virtualNumberService } from '@/services/apiService';
+import { useAppStore } from '@/store';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
@@ -44,6 +45,7 @@ export default function ProductListScreen() {
   const [pinProcessing, setPinProcessing] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<VirtualNumberProduct | null>(null);
   const [purchaseResult, setPurchaseResult] = useState<any | null>(null);
+  const { userData } = useAppStore();
 
   // Build extended list: all world countries + mark which are supported
   /**
@@ -186,6 +188,16 @@ export default function ProductListScreen() {
   };
 
   const handleBuyProduct = (product: VirtualNumberProduct) => {
+    // Guard: require a transaction PIN before allowing purchase
+    // (Other areas already enforce this, but VN screen now consistent)
+    if (!userData?.hasTransactionPin) {
+      showConfirm(
+        'Set Transaction PIN',
+        'You need to set up a transaction PIN before purchasing a virtual number. Go to Settings > Security to create one.',
+        () => {}
+      );
+      return;
+    }
     setPendingProduct(product);
     showConfirm(
       'Buy Virtual Number',
@@ -197,6 +209,8 @@ export default function ProductListScreen() {
   };
 
   const processPurchase = async (pin: string) => {
+    // Called once user enters a 4-digit PIN in TransactionPinModal.
+    // Keeps pendingProduct on failure so user can retry without re-selecting.
     if (!pendingProduct) return;
     setPinProcessing(true);
     try {
@@ -208,18 +222,33 @@ export default function ProductListScreen() {
         transaction_pin: pin,
       };
       const res = await virtualNumberService.buyVirtualNumber(payload);
+      // Normalize backend message for easier matching
+      const rawMessage = (res.message || (res as any)?.error || '').toString().toLowerCase();
+      const isInvalidPin = !res.success && /(invalid|incorrect) (transaction )?pin/.test(rawMessage);
       if (res.success) {
         setPurchaseResult(res.data);
         setShowPinModal(false);
         showSuccess('Success', 'Virtual number purchased successfully');
+        setPendingProduct(null); // clear only on success so user can retry on failure
       } else {
-        showConfirm('Purchase Failed', res.message || 'Unable to complete purchase', () => {});
+        if (isInvalidPin) {
+          showConfirm('Invalid PIN', 'The transaction PIN you entered is incorrect. Please try again.', () => {
+            setShowPinModal(true);
+          });
+        } else {
+          showConfirm('Purchase Failed', res.message || 'Unable to complete purchase', () => {
+            // Keep modal open for retry – user can re-enter correct PIN
+            setShowPinModal(true);
+          });
+        }
       }
     } catch (e: any) {
-      showConfirm('Error', e?.message || 'An unexpected error occurred', () => {});
+      showConfirm('Error', e?.message || 'An unexpected error occurred', () => {
+        // Allow retry
+        setShowPinModal(true);
+      });
     } finally {
       setPinProcessing(false);
-      setPendingProduct(null);
     }
   };
 
@@ -397,7 +426,7 @@ export default function ProductListScreen() {
       {renderCountryModal()}
       <TransactionPinModal
         visible={showPinModal}
-        onClose={() => { if (!pinProcessing) { setShowPinModal(false); setPendingProduct(null); } }}
+        onClose={() => { if (!pinProcessing) { setShowPinModal(false); /* keep pendingProduct for potential retry until success */ } }}
         onPinEntered={processPurchase}
         isProcessing={pinProcessing}
         title="Enter Transaction PIN"

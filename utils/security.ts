@@ -9,6 +9,7 @@ const PIN_ATTEMPTS_KEY = 'appPinAttempts';
 const PIN_LAST_FAIL_TS_KEY = 'appPinLastFailTs';
 const BIOMETRICS_ENABLED_KEY = 'biometricsEnabled';
 const AUTO_BIOMETRICS_KEY = 'autoBiometricsEnabled';
+const LAST_BACKGROUND_TS_KEY = 'lastBackgroundTs';
 
 // Defaults
 const DEFAULT_PIN_LENGTH = 4; // Keep 4 to avoid breaking existing UX
@@ -168,4 +169,31 @@ export const SecurityKeys = {
   BIOMETRICS_ENABLED_KEY,
   AUTO_BIOMETRICS_KEY,
   SESSION_UNLOCK_KEY,
+  LAST_BACKGROUND_TS_KEY,
 };
+
+// Inactivity helpers --------------------------------------------------------
+// We persist the timestamp when the app moved to background so that if the
+// process is killed by the OS while in background and relaunched later, we can
+// still enforce a lock if the inactivity threshold was exceeded.
+
+export async function setLastBackgroundTimestamp(ts: number): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(LAST_BACKGROUND_TS_KEY, String(ts));
+  } catch {}
+}
+
+export async function getLastBackgroundTimestamp(): Promise<number | null> {
+  try {
+    const v = await SecureStore.getItemAsync(LAST_BACKGROUND_TS_KEY);
+    return v ? parseInt(v, 10) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearLastBackgroundTimestamp(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(LAST_BACKGROUND_TS_KEY);
+  } catch {}
+}

@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { accountService } from '@/services/apiService';
 import { uploadImageToStorage } from '@/utils/upload';
 import { CameraView, FlashMode, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { CameraType } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -21,10 +22,9 @@ export default function KycNinScreen() {
   const { showNotification } = useNotification();
 
   const [frontUri, setFrontUri] = useState<string>('');
-  const [backUri, setBackUri] = useState<string>('');
   const [nin, setNin] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'front' | 'back' | 'review'>('front');
+  const [review, setReview] = useState(false);
   const [flash, setFlash] = useState<FlashMode>('auto');
 
   const cameraRef = useRef<CameraView | null>(null);
@@ -53,32 +53,38 @@ export default function KycNinScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
       if (photo?.uri) {
-        if (step === 'front') {
-          setFrontUri(photo.uri);
-          setStep('back');
-          showNotification('Front captured. Now capture the back.', 'info');
-        } else if (step === 'back') {
-          setBackUri(photo.uri);
-          setStep('review');
-        }
+        setFrontUri(photo.uri);
+        setReview(true);
       }
     } catch (e: any) {
       showNotification(e?.message || 'Failed to capture photo', 'error');
     }
   };
 
+  const pickFromGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return showNotification('Gallery permission denied', 'error');
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+      if (!res.canceled && res.assets?.length) {
+        setFrontUri(res.assets[0].uri);
+        setReview(true);
+      }
+    } catch (e: any) {
+      showNotification(e?.message || 'Failed to pick image', 'error');
+    }
+  };
+
   const submit = async () => {
-    if (!frontUri || !backUri)
-      return showNotification('Please select both front and back images', 'error');
+    if (!frontUri)
+      return showNotification('Please capture or select the front image', 'error');
     if (!/^\d{11}$/.test(nin))
       return showNotification('Enter a valid 11-digit NIN', 'error');
     setLoading(true);
     try {
-      const [frontUrl, backUrl] = await Promise.all([
-        uploadImageToStorage(frontUri, `ids/nin/${auth.currentUser?.uid}/${Date.now()}-front.jpg`),
-        uploadImageToStorage(backUri, `ids/nin/${auth.currentUser?.uid}/${Date.now()}-back.jpg`),
-      ]);
-      const res = await accountService.submitIdentity({ ninFront: frontUrl, ninBack: backUrl, nin });
+      const frontUrl = await uploadImageToStorage(frontUri, `ids/nin/${auth.currentUser?.uid}/${Date.now()}-front.jpg`);
+      const res = await accountService.submitIdentity({ ninFront: frontUrl, nin });
+      console.log({res})
       if (res.success) {
         showNotification(res.message || 'Details submitted successfully', 'success');
         router.back();
@@ -125,17 +131,14 @@ export default function KycNinScreen() {
           onChangeText={(t) => setNin(t.replace(/[^0-9]/g, '').slice(0, 11))}
           keyboardType="numeric"
           returnKeyType="done"
-          blurOnSubmit={true}
+          
           onSubmitEditing={() => Keyboard.dismiss()}
           style={[styles.input, { color: text, borderColor: border }]}
         />
 
-        {/* Camera capture flow */}
-        {step !== 'review' ? (
+        {!review ? (
           <View>
-            <ThemedText style={[styles.label, { color: text }]}>
-              {step === 'front' ? 'Capture Front of NIN Card' : 'Capture Back of NIN Card'}
-            </ThemedText>
+            <ThemedText style={[styles.label, { color: text }]}>Capture Front of NIN Card</ThemedText>
             <View style={styles.cameraContainer}>
               {hasPermission ? (
                 <CameraView
@@ -153,31 +156,46 @@ export default function KycNinScreen() {
                 <View style={styles.overlay} />
               </View>
             </View>
-            <View style={styles.row}>
-              <AppButton
-                title={flash === 'on' ? 'Flash On' : flash === 'auto' ? 'Flash Auto' : 'Flash Off'}
+            <View style={styles.iconRow}>
+              <TouchableOpacity
                 onPress={() => setFlash(flash === 'off' ? 'auto' : flash === 'auto' ? 'on' : 'off')}
-                style={{ marginRight: 8 }}
-              />
-              <AppButton title="Capture" onPress={capture} />
+                style={styles.iconButton}
+                accessibilityLabel="Toggle flash mode"
+              >
+                <IconSymbol
+                  name={flash === 'on' ? 'flash' : 'flash'}
+                  size={24}
+                  color={text}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={capture}
+                style={[styles.iconButton, styles.captureButton]}
+                accessibilityLabel="Capture photo"
+              >
+                <IconSymbol name="camera" size={28} color={bg} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={pickFromGallery}
+                style={styles.iconButton}
+                accessibilityLabel="Pick from gallery"
+              >
+                <IconSymbol name="image" size={24} color={text} />
+              </TouchableOpacity>
             </View>
           </View>
         ) : (
           <View>
             <ThemedText style={[styles.label, { color: text }]}>Review</ThemedText>
             <View style={styles.previewRow}>
-              <View style={[styles.pick, { borderColor: border, width: '48%' }]}>
-                {frontUri ? <Image source={{ uri: frontUri }} style={styles.preview} /> : <ThemedText>Front missing</ThemedText>}
-              </View>
-              <View style={[styles.pick, { borderColor: border, width: '48%' }]}>
-                {backUri ? <Image source={{ uri: backUri }} style={styles.preview} /> : <ThemedText>Back missing</ThemedText>}
+              <View style={[styles.pick, { borderColor: border, width: '100%' }]}>
+                {frontUri ? <Image source={{ uri: frontUri }} style={styles.preview} /> : <ThemedText>No image</ThemedText>}
               </View>
             </View>
-            <View style={styles.row}>
-              <AppButton title="Retake Front" onPress={() => { setFrontUri(''); setStep('front'); }} style={{ marginRight: 8 }} />
-              <AppButton title="Retake Back" onPress={() => { setBackUri(''); setStep('back'); }} />
+            <View style={[styles.row, { flexDirection: 'column' }]}>
+              <AppButton title="Retake" onPress={() => { setFrontUri(''); setReview(false); }} style={{ marginRight: 8 }} />
+              <AppButton title={loading ? 'Submitting…' : 'Submit'} onPress={submit} loading={loading} />
             </View>
-            <AppButton title={loading ? 'Submitting…' : 'Submit'} onPress={submit} loading={loading} />
           </View>
         )}
       </View>
@@ -206,4 +224,7 @@ const styles = StyleSheet.create({
   overlay: { width: '80%', height: '60%', borderWidth: 2, borderStyle: 'dashed', borderColor: '#ffffffaa', borderRadius: 12 },
   previewRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   row: { flexDirection: 'column', alignItems: 'center', marginTop: 8, justifyContent: 'center' },
+  iconRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 4 },
+  iconButton: { width: 54, height: 54, borderRadius: 54, borderWidth: 1, borderColor: '#8884', alignItems: 'center', justifyContent: 'center', marginHorizontal: 6, backgroundColor: 'transparent' },
+  captureButton: { backgroundColor: '#FF6F6F', borderColor: '#FF6F6F' },
 });

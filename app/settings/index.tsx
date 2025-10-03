@@ -323,31 +323,26 @@ export default function SettingsScreen() {
                     type: 'navigation',
                     onPress: async () => {
                         try {
-                            const email = 'finsyncdigitalservices@gmail.com';
-                            const subject = encodeURIComponent('FinSync Support Request');
-                            const body = encodeURIComponent(
-                                `Hi FinSync Support,\n\nPlease help me with ...\n\nUser: ${userData.fullname || ''}\nEmail: ${userData.email || ''}`
-                            );
-                            const url = `mailto:${email}?subject=${subject}&body=${body}`;
-                            const supported = await Linking.canOpenURL(url);
+                            const whatsappUrl = 'https://wa.me/message/HQCPT6ETWBIXI1';
+                            const supported = await Linking.canOpenURL(whatsappUrl);
                             if (supported) {
-                                await Linking.openURL(url);
+                                await Linking.openURL(whatsappUrl);
                             } else {
-                                showNotification('No email app found on this device', 'error');
+                                showNotification('WhatsApp not available on this device', 'error');
                             }
                         } catch (e) {
-                            showNotification('Could not open email app', 'error');
+                            showNotification('Could not open WhatsApp', 'error');
                         }
                     }
                 },
-                {
-                    id: 'feedback',
-                    title: 'Send Feedback',
-                    subtitle: 'Share your thoughts with us',
-                    icon: 'star.fill',
-                    type: 'navigation',
-                    onPress: () => showNotification('Feedback form coming soon', 'info')
-                }
+                // {
+                //     id: 'feedback',
+                //     title: 'Send Feedback',
+                //     subtitle: 'Share your thoughts with us',
+                //     icon: 'star.fill',
+                //     type: 'navigation',
+                //     onPress: () => showNotification('Feedback form coming soon', 'info')
+                // }
             ]
         },
         {
@@ -358,14 +353,14 @@ export default function SettingsScreen() {
                     title: 'Terms of Service',
                     icon: 'doc.text.fill',
                     type: 'navigation',
-                    onPress: () => router.push('/settings/terms' as Href)
+                    onPress: () => Linking.openURL('https://finsync-web.vercel.app/terms')
                 },
                 {
                     id: 'privacy',
                     title: 'Privacy Policy',
                     icon: 'hand.raised.fill',
                     type: 'navigation',
-                    onPress: () => Linking.openURL('https://www.termsfeed.com/live/c4822276-2354-4a83-a113-6a342c4dbde3')
+                    onPress: () => Linking.openURL('https://finsync-web.vercel.app/privacy')
                 },
                 // {
                 //     id: 'licenses',

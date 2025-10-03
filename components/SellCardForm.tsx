@@ -2,11 +2,11 @@ import AppButton from '@/components/ui/AppButton';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ProductCategory } from '@/services/apiService';
-import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useNotification } from './InAppNotificationProvider';
+import CrossPlatformPicker from './ui/CrossPlatformPicker';
 
 interface SellCardFormProps {
   categories: ProductCategory[];
@@ -117,16 +117,13 @@ const SellCardForm: React.FC<SellCardFormProps> = ({ categories, onSubmit, loadi
 
       <Text style={[styles.label, { color: labelColor }]}>Category</Text>
       <View style={[styles.pickerWrapper, { borderColor, backgroundColor: cardColor }]}>
-        <Picker
+        <CrossPlatformPicker
           selectedValue={type}
           onValueChange={setType}
           style={[styles.picker, { color: textColor }]}
-          dropdownIconColor={textColor}
-        >
-          {categories.map((cat) => (
-            <Picker.Item key={cat.id} label={cat.name} value={cat.name} />
-          ))}
-        </Picker>
+          items={categories.map(cat => ({ label: cat.name, value: cat.name }))}
+          textColor={textColor}
+        />
       </View>
 
       <Text style={[styles.label, { color: labelColor }]}>Card Value</Text>

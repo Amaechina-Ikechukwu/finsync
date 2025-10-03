@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React from 'react';
+import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -13,7 +14,7 @@ import { auth } from '@/firebase';
 import { SessionProvider } from '@/hooks/useAuth';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { accountService } from '@/services/apiService';
-import { getSessionUnlocked, isPasscodeSet, setSessionUnlocked } from '@/utils/security';
+import { getLastBackgroundTimestamp, getSessionUnlocked, isPasscodeSet, setLastBackgroundTimestamp, setSessionUnlocked } from '@/utils/security';
 import * as Sentry from '@sentry/react-native';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
@@ -55,6 +56,12 @@ function AuthNavigator() {
   const firstAuthHandledRef = React.useRef(false);
   const [minDelayPassed, setMinDelayPassed] = React.useState(false);
   const minDelayRef = React.useRef<number | null>(null);
+  const appStateRef = React.useRef(AppState.currentState);
+  const lastBackgroundTsRef = React.useRef<number | null>(null);
+
+  // Inactivity threshold (ms) after which app unlock is required again
+  // Centralized here but could be moved to a constants file if reused elsewhere.
+  const INACTIVITY_LOCK_MS = 5 * 60 * 1000; // 5 minutes (configurable)
 
   // Check session unlock status from persistent storage
   const checkSessionUnlock = async () => {
@@ -74,6 +81,18 @@ function AuthNavigator() {
     const init = async () => {
       try {
         const onboarded = await SecureStore.getItemAsync('seenOnboarding');
+
+        // At cold start, if we have a last background timestamp, evaluate inactivity
+        try {
+          const lastBg = await getLastBackgroundTimestamp();
+          if (lastBg) {
+            const awayFor = Date.now() - lastBg;
+            if (awayFor >= INACTIVITY_LOCK_MS) {
+              await setSessionUnlocked(false);
+              setHasUnlockedThisSession(false);
+            }
+          }
+        } catch {}
 
         // Check session unlock state
         await checkSessionUnlock();
@@ -221,10 +240,22 @@ function AuthNavigator() {
   }, [isLoading, loaded]);
 
   // Main gating
+  // IMPORTANT: hasUnlockedThisSession MUST be in the dependency array so that when
+  // an inactivity lock resets it to false, we re-run and force navigation to the
+  // unlock screen. Without it, the user could remain on a protected route.
   React.useEffect(() => {
     if (!navigationReady || isNavigating || !rootNav?.key) return;
     const currentRoute = segments.join('/') || '';
     console.log('Navigation gating check:', { currentRoute, user: !!user, seenOnboarding, isPinSet, isBvnVerified });
+
+    // Highest priority: if user is signed in, PIN exists, but session not unlocked yet, force unlock screen
+    if (user && isPinSet && !hasUnlockedThisSession && currentRoute !== 'auth/app-unlock') {
+      console.log('Session locked: redirecting to app unlock before other gating');
+      setIsNavigating(true);
+      router.replace('/auth/app-unlock');
+      setTimeout(() => setIsNavigating(false), 500);
+      return;
+    }
 
     if (user) {
       if (!user.emailVerified && currentRoute !== 'auth/verify-email') {
@@ -289,43 +320,7 @@ function AuthNavigator() {
       setTimeout(() => setIsNavigating(false), 500);
       return;
     }
-  }, [navigationReady, isNavigating, rootNav?.key, segments, user, isBvnVerified, isPinSet, seenOnboarding]);
-
-  // Existing user lock screen
-  React.useEffect(() => {
-    if (!navigationReady || isNavigating) return;
-    const currentRoute = segments.join('/') || '';
-    const onAuthScreen = currentRoute.startsWith('auth/');
-
-    // If we're headed to main app but haven't unlocked in-memory yet,
-    // double-check persistent storage to avoid racing redirects immediately after unlock.
-    if (user && isPinSet && !onAuthScreen && !hasUnlockedThisSession && currentRoute !== 'auth/app-unlock') {
-      (async () => {
-        try {
-          const unlocked = await checkSessionUnlock();
-          if (!unlocked) {
-            setIsNavigating(true);
-            router.replace('/auth/app-unlock');
-            setTimeout(() => setIsNavigating(false), 500);
-            return;
-          }
-          // If storage shows unlocked, update in-memory state and don't redirect
-          setHasUnlockedThisSession(true);
-        } catch (e) {
-          // If storage check fails, fall back to redirecting to app-unlock
-          setIsNavigating(true);
-          router.replace('/auth/app-unlock');
-          setTimeout(() => setIsNavigating(false), 500);
-          return;
-        }
-      })();
-      return;
-    }
-
-    if (user && isPinSet && currentRoute === 'auth/app-unlock') {
-      checkSessionUnlock();
-    }
-  }, [navigationReady, isNavigating, segments, user, isPinSet, hasUnlockedThisSession]);
+  }, [navigationReady, isNavigating, rootNav?.key, segments, user, isBvnVerified, isPinSet, seenOnboarding, hasUnlockedThisSession]);
 
   // After unlock, go to tabs
   React.useEffect(() => {
@@ -337,6 +332,56 @@ function AuthNavigator() {
       setTimeout(() => setIsNavigating(false), 500);
     }
   }, [hasUnlockedThisSession, navigationReady, isNavigating, segments]);
+
+  // Sync unlock state when viewing the app-unlock screen (in case storage updated outside this component)
+  React.useEffect(() => {
+    if (!navigationReady) return;
+    const currentRoute = segments.join('/') || '';
+    if (currentRoute === 'auth/app-unlock' && !hasUnlockedThisSession) {
+      (async () => {
+        try {
+          const unlocked = await getSessionUnlocked();
+          if (unlocked) setHasUnlockedThisSession(true);
+        } catch {}
+      })();
+    }
+  }, [navigationReady, segments, hasUnlockedThisSession]);
+
+  // App state / inactivity tracking: require unlock if backgrounded >= threshold
+  React.useEffect(() => {
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      // When moving to background/inactive, record timestamp
+      if ((nextState === 'background' || nextState === 'inactive') && (prev === 'active')) {
+        const ts = Date.now();
+        lastBackgroundTsRef.current = ts;
+        // Persist so we can enforce after process death
+        await setLastBackgroundTimestamp(ts);
+      }
+      // When coming back to active, check inactivity duration
+      if (nextState === 'active' && (prev === 'background' || prev === 'inactive')) {
+        if (lastBackgroundTsRef.current) {
+          const awayFor = Date.now() - lastBackgroundTsRef.current;
+          if (awayFor >= INACTIVITY_LOCK_MS) {
+            try {
+              // Force session lock so gating effect will redirect; also reset in-memory flag
+              await setSessionUnlocked(false);
+              setHasUnlockedThisSession(false);
+              // Immediate navigation to unlock to avoid waiting for effect cycle
+              const currentRoute = segments.join('/') || '';
+              if (user && isPinSet && currentRoute !== 'auth/app-unlock') {
+                setIsNavigating(true);
+                router.replace('/auth/app-unlock');
+                setTimeout(() => setIsNavigating(false), 500);
+              }
+            } catch {}
+          }
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [user, isPinSet, segments]);
 
   if (!navigationReady || !rootNav?.key || !initialDecisionDone || !minDelayPassed) {
     return (
