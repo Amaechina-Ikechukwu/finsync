@@ -52,7 +52,6 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
       }}
     } catch (error) {
       console.error('Error sending token to backend:', error);
-      showNotification('Failed to register push token with server', 'error');
     }
   };
 
