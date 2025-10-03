@@ -8,7 +8,7 @@ import { COUNTRIES as WORLD_COUNTRY_NAMES } from '@/constants/countries';
 import { getVirtualNumberCountrySlug, slugifyCountryName, VIRTUAL_NUMBER_COUNTRIES as SUPPORTED_VN_COUNTRIES, type Country } from '@/constants/virtualNumberCountries';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useCustomAlert } from '@/hooks/useCustomAlert';
-import { VirtualNumberProductsByService, virtualNumberService } from '@/services/apiService';
+import { VirtualNumberProductsByService, VirtualNumberPurchaseData, virtualNumberService } from '@/services/apiService';
 import { useAppStore } from '@/store';
 import React, { useEffect, useState } from 'react';
 import {
@@ -44,7 +44,18 @@ export default function ProductListScreen() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinProcessing, setPinProcessing] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<VirtualNumberProduct | null>(null);
-  const [purchaseResult, setPurchaseResult] = useState<any | null>(null);
+  const [purchaseResult, setPurchaseResult] = useState<VirtualNumberPurchaseData | null>(null);
+  const [processingProductKey, setProcessingProductKey] = useState<string | null>(null); // identify which product is in-flight
+  const listRef = React.useRef<FlatList<VirtualNumberProduct> | null>(null);
+
+  // When a purchase completes successfully, bring the user attention to the result section.
+  useEffect(() => {
+    if (purchaseResult) {
+      // Optionally we could navigate to details screen or refresh purchases list.
+      // For now: flash scroll to top (where result box sits) to highlight.
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, [purchaseResult]);
   const { userData } = useAppStore();
 
   // Build extended list: all world countries + mark which are supported
@@ -213,6 +224,8 @@ export default function ProductListScreen() {
     // Keeps pendingProduct on failure so user can retry without re-selecting.
     if (!pendingProduct) return;
     setPinProcessing(true);
+    const productKey = `${pendingProduct.serviceCode}-${pendingProduct.operatorCode}`;
+    setProcessingProductKey(productKey);
     try {
       const countrySlug = getVirtualNumberCountrySlug(selectedCountry);
       const payload = {
@@ -226,7 +239,7 @@ export default function ProductListScreen() {
       const rawMessage = (res.message || (res as any)?.error || '').toString().toLowerCase();
       const isInvalidPin = !res.success && /(invalid|incorrect) (transaction )?pin/.test(rawMessage);
       if (res.success) {
-        setPurchaseResult(res.data);
+        if (res.data) setPurchaseResult(res.data as VirtualNumberPurchaseData);
         setShowPinModal(false);
         showSuccess('Success', 'Virtual number purchased successfully');
         setPendingProduct(null); // clear only on success so user can retry on failure
@@ -249,10 +262,14 @@ export default function ProductListScreen() {
       });
     } finally {
       setPinProcessing(false);
+      setProcessingProductKey(null);
     }
   };
 
-  const renderProduct = ({ item }: { item: VirtualNumberProduct }) => (
+  const renderProduct = ({ item }: { item: VirtualNumberProduct }) => {
+    const productKey = `${item.serviceCode}-${item.operatorCode}`;
+    const isProcessingThis = processingProductKey === productKey;
+    return (
     <ThemedView style={[styles.productCard, { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' }]}>
       <View style={styles.productHeader}>
         <View style={styles.productInfo}>
@@ -288,13 +305,13 @@ export default function ProductListScreen() {
       </View>
       
       <AppButton
-        title={item.count > 0 ? "Buy Now" : "Out of Stock"}
+        title={isProcessingThis ? 'Processing...' : item.count > 0 ? 'Buy Now' : 'Out of Stock'}
         onPress={() => handleBuyProduct(item)}
         style={styles.buyButton}
-        disabled={item.count === 0}
+        disabled={item.count === 0 || isProcessingThis || pinProcessing}
       />
     </ThemedView>
-  );
+  ); };
 
   const renderCountryModal = () => (
     <Modal
@@ -415,6 +432,7 @@ export default function ProductListScreen() {
         </ThemedView>
       ) : (
         <FlatList
+          ref={listRef}
           data={filteredProducts}
           renderItem={renderProduct}
           keyExtractor={(item) => `${item.serviceCode}-${item.operatorCode}`}
@@ -436,8 +454,14 @@ export default function ProductListScreen() {
       {/* Optionally display purchase result summary */}
       {purchaseResult && (
         <View style={{ padding: 16 }}>
-          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Number: {purchaseResult?.data?.phone || purchaseResult?.phone}</ThemedText>
-          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Status: {purchaseResult?.data?.status || purchaseResult?.status}</ThemedText>
+          <ThemedText style={{ fontSize: 16, fontWeight: '600' }}>Last Purchase</ThemedText>
+          <ThemedText style={{ fontSize: 14, opacity: 0.7, marginTop: 4 }}>Phone: {purchaseResult.phone}</ThemedText>
+          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Status: {purchaseResult.status}</ThemedText>
+          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Product: {purchaseResult.product}</ThemedText>
+          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Operator: {purchaseResult.operator}</ThemedText>
+          {purchaseResult.activationId && (
+            <ThemedText style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>Activation ID: {purchaseResult.activationId}</ThemedText>
+          )}
         </View>
       )}
       

@@ -762,11 +762,36 @@ export interface SMSMessage {
   code: string | null;
 }
 
-export interface VirtualNumberSMSResponse {
+// Virtual number SMS data payload (server response is { success, data })
+export interface VirtualNumberSMSData {
+  sms: SMSMessage[];
+}
+
+// ---- Virtual Number Purchase Typings ----
+export interface BuyVirtualNumberRequest {
+  country: string; // backend expects slug (e.g., 'nigeria')
+  operator: string; // e.g., 'virtual2'
+  product: string; // service / product code e.g., 'amazon'
+  transaction_pin?: string; // optional; required if backend enforces PIN validation
+}
+
+export interface VirtualNumberPurchaseData {
+  activationId: number;
+  phone: string;
+  status: string; // e.g., RECEIVED
+  cost: number;
+  country: string;
+  operator: string;
+  product: string;
+  // Some backends may return additional fields like expires, purchaseId etc. Keep index signature.
+  [key: string]: any;
+}
+
+export interface BuyVirtualNumberResponse {
   success: boolean;
-  data: {
-    sms: SMSMessage[];
-  };
+  message?: string;
+  data: VirtualNumberPurchaseData;
+  error?: string; // preserve generic ApiResponse shape when merged
 }
 
 export interface NotificationUnreadCountResponse {
@@ -1016,13 +1041,13 @@ export const virtualNumberService = {
   },
   
   // Get SMS messages for a virtual number
-  getSMSMessages: async (numberId: string): Promise<ApiResponse<VirtualNumberSMSResponse>> => {
-    return await apiClient.get<VirtualNumberSMSResponse>(`/virtual-numbers/sms/${numberId}`);
+  getSMSMessages: async (numberId: string): Promise<ApiResponse<VirtualNumberSMSData>> => {
+    return await apiClient.get<VirtualNumberSMSData>(`/virtual-numbers/sms/${numberId}`);
   },
 
   // Buy a virtual number
-  buyVirtualNumber: async (payload: { country: string; operator: string; product: string; transaction_pin?: string }): Promise<ApiResponse<any>> => {
-    return await apiClient.post<any>('/virtual-numbers/buy', payload);
+  buyVirtualNumber: async (payload: BuyVirtualNumberRequest): Promise<ApiResponse<VirtualNumberPurchaseData>> => {
+    return await apiClient.post<VirtualNumberPurchaseData>('/virtual-numbers/buy', payload);
   },
 };
 

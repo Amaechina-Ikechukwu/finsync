@@ -45,9 +45,9 @@ export default function VirtualNumberDetailsScreen() {
       setError(null);
       
       const response = await virtualNumberService.getSMSMessages(id);
-      
+
       if (response.success && response.data) {
-        setSmsMessages(response.data.data.sms);
+        setSmsMessages(response.data.sms);
         // Note: virtualNumber is not returned in the new API response
         // setVirtualNumber(response.data.virtualNumber);
       } else {

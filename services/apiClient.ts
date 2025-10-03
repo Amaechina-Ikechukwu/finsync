@@ -33,6 +33,18 @@ export class ApiClient {
   Accept: 'application/json',
       ...config.headers,
     };
+
+    // Warn if we are using a fallback or suspicious baseURL (likely mis-configured env var)
+    try {
+      if (!this.baseURL || /your-fallback-api-url/i.test(this.baseURL)) {
+        console.warn(
+          '\u26a0\ufe0f API baseURL fallback in use. Set EXPO_PUBLIC_API_URL in your env (.env, app.config, or EAS env vars). Current baseURL =',
+          this.baseURL
+        );
+      }
+    } catch (_) {
+      // ignore warning failures
+    }
   }
 
   private async getAuthToken(): Promise<string | null> {
@@ -83,6 +95,24 @@ export class ApiClient {
         signal: controller.signal,
       });
 
+      // Optional verbose debug logging when EXPO_PUBLIC_API_DEBUG=1
+      if (process.env.EXPO_PUBLIC_API_DEBUG === '1') {
+        const safeHeaders = { ...headers } as Record<string, any>;
+        if (safeHeaders.Authorization) {
+          // show only token prefix for safety
+            const val = safeHeaders.Authorization;
+            safeHeaders.Authorization = val.slice(0, 25) + '...';
+        }
+        console.log('[API DEBUG]', {
+          url: `${this.baseURL}${endpoint}`,
+          method: options.method || 'GET',
+          timeoutMs,
+          status: response.status,
+          ok: response.ok,
+          headers: safeHeaders,
+        });
+      }
+
       if (timeoutId) clearTimeout(timeoutId);
       if (config?.signal) config.signal.removeEventListener('abort', onExternalAbort);
 
@@ -96,6 +126,9 @@ export class ApiClient {
           serverMessage = errorText;
         }
         console.error(`❌ HTTP Error ${response.status}: ${response.statusText}`, serverMessage);
+        if (/5sim api key not configured/i.test(serverMessage)) {
+          console.warn('⚠️ Detected 5sim API key configuration issue. Verify backend environment variables are loaded for the domain:', this.baseURL);
+        }
         return {
           success: false,
           error: `HTTP ${response.status}: ${response.statusText}${serverMessage ? ' - ' + serverMessage : ''}`,
