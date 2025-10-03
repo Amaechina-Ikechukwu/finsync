@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import TransactionPinModal from '@/components/TransactionPinModal';
 import AppButton from '@/components/ui/AppButton';
 import CustomAlert from '@/components/ui/CustomAlert';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { VIRTUAL_NUMBER_COUNTRIES as COUNTRIES, type Country } from '@/constants/virtualNumberCountries';
+import { COUNTRIES as WORLD_COUNTRY_NAMES } from '@/constants/countries';
+import { getVirtualNumberCountrySlug, slugifyCountryName, VIRTUAL_NUMBER_COUNTRIES as SUPPORTED_VN_COUNTRIES, type Country } from '@/constants/virtualNumberCountries';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useCustomAlert } from '@/hooks/useCustomAlert';
 import { VirtualNumberProductsByService, virtualNumberService } from '@/services/apiService';
@@ -36,8 +38,84 @@ export default function ProductListScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]);
+  const [selectedCountry, setSelectedCountry] = useState<Country>(SUPPORTED_VN_COUNTRIES[0]);
   const [showCountryModal, setShowCountryModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinProcessing, setPinProcessing] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<VirtualNumberProduct | null>(null);
+  const [purchaseResult, setPurchaseResult] = useState<any | null>(null);
+
+  // Build extended list: all world countries + mark which are supported
+  /**
+   * extendedCountries merges:
+   *  - All world country names (static list in constants/countries.ts)
+   *  - Currently supported virtual number countries (with real ISO codes & flags)
+   * Unsupported countries receive:
+   *  - A synthetic 2-letter code derived from slug (only for list identity; not sent to backend)
+   *  - A generated flag emoji when possible (regional indicator) or fallback 🏳️
+   *  - supported=false so UI can dim & block selection.
+   * To add support later: add entry to VIRTUAL_NUMBER_COUNTRIES and the modal will auto-upgrade it.
+   */
+  interface ExtendedCountry extends Country { supported: boolean; }
+  const extendedCountries: ExtendedCountry[] = React.useMemo(() => {
+    const supportedByNorm = new Map<string, Country>();
+    const normalize = (name: string) => name
+      .toLowerCase()
+      .replace(/\(.*?\)/g, '') // drop parenthetical clarifications
+      .replace(/of america/g, '') // unify 'United States of America'
+      .replace(/[^a-z0-9]+/g, ' ') // collapse to spaces
+      .trim();
+
+    SUPPORTED_VN_COUNTRIES.forEach(c => {
+      supportedByNorm.set(normalize(c.name), c);
+    });
+
+    // Helper to derive a safe code for unsupported countries (not used for API)
+    const deriveCode = (name: string) => {
+      const slug = slugifyCountryName(name);
+      // Use first two letters if possible for potential flag; else slug
+      return slug.slice(0, 2);
+    };
+
+    const makeFlag = (code: string): string => {
+      if (/^[a-z]{2}$/.test(code)) {
+        const A = 0x1F1E6;
+        const base = 'a'.charCodeAt(0);
+        return String.fromCodePoint(A + (code.charCodeAt(0) - base)) + String.fromCodePoint(A + (code.charCodeAt(1) - base));
+      }
+      return '🏳️'; // generic flag fallback
+    };
+
+  const list: ExtendedCountry[] = WORLD_COUNTRY_NAMES.map(name => {
+      const norm = normalize(name);
+      // Also attempt partial match (e.g., 'united states' within 'united states of')
+      let matched: Country | undefined = supportedByNorm.get(norm);
+      if (!matched) {
+        for (const [k, v] of supportedByNorm.entries()) {
+          if (norm.includes(k) || k.includes(norm)) { matched = v; break; }
+        }
+      }
+      if (matched) {
+        return { ...matched, supported: true };
+      }
+      const code = deriveCode(name);
+      return { code, name, flag: makeFlag(code), supported: true }; // now all are considered supported
+    });
+
+    // Ensure supported ones appear first (retain original supported ordering), then alphabetical others
+    const supportedCodes = new Set(SUPPORTED_VN_COUNTRIES.map(c => c.code));
+    return list.sort((a, b) => {
+      // keep originally supported ordering first, then alphabetic
+      const aIdx = SUPPORTED_VN_COUNTRIES.findIndex(c => c.name === a.name);
+      const bIdx = SUPPORTED_VN_COUNTRIES.findIndex(c => c.name === b.name);
+      const aIsCore = aIdx !== -1;
+      const bIsCore = bIdx !== -1;
+      if (aIsCore && bIsCore) return aIdx - bIdx;
+      if (aIsCore) return -1;
+      if (bIsCore) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -53,7 +131,7 @@ export default function ProductListScreen() {
       setError(null);
       
   // Backend expects a country slug (e.g., 'nigeria'), not ISO code ('ng')
-  const countrySlug = getCountrySlug(selectedCountry);
+  const countrySlug = getVirtualNumberCountrySlug(selectedCountry);
   const response = await virtualNumberService.getVirtualNumberPricing(countrySlug);
       console.log(JSON.stringify(response,null,2))
       if (response.success && response.data) {
@@ -72,19 +150,7 @@ export default function ProductListScreen() {
     }
   };
 
-  // Map common ISO codes to backend slugs; fallback to a safe slugified name
-  const getCountrySlug = (country: Country) => {
-    const map: Record<string, string> = {
-      ng: 'nigeria',
-      us: 'united-states',
-      gb: 'united-kingdom',
-      gh: 'ghana',
-      ke: 'kenya',
-      ca: 'canada',
-      in: 'india',
-    };
-    return map[country.code] || country.name.trim().toLowerCase().replace(/\s+/g, '-');
-  };
+  // Country slug logic centralized in constants/getVirtualNumberCountrySlug
 
   const transformApiData = (data: VirtualNumberProductsByService): VirtualNumberProduct[] => {
     const products: VirtualNumberProduct[] = [];
@@ -120,14 +186,41 @@ export default function ProductListScreen() {
   };
 
   const handleBuyProduct = (product: VirtualNumberProduct) => {
+    setPendingProduct(product);
     showConfirm(
       'Buy Virtual Number',
       `Purchase ${product.serviceName} for ₦${product.cost.toFixed(2)}?`,
       () => {
-        // Navigate to purchase confirmation or process purchase
-        showSuccess('Success', 'Purchase initiated');
+        setShowPinModal(true);
       }
     );
+  };
+
+  const processPurchase = async (pin: string) => {
+    if (!pendingProduct) return;
+    setPinProcessing(true);
+    try {
+      const countrySlug = getVirtualNumberCountrySlug(selectedCountry);
+      const payload = {
+        country: countrySlug,
+        operator: pendingProduct.operatorCode,
+        product: pendingProduct.serviceCode,
+        transaction_pin: pin,
+      };
+      const res = await virtualNumberService.buyVirtualNumber(payload);
+      if (res.success) {
+        setPurchaseResult(res.data);
+        setShowPinModal(false);
+        showSuccess('Success', 'Virtual number purchased successfully');
+      } else {
+        showConfirm('Purchase Failed', res.message || 'Unable to complete purchase', () => {});
+      }
+    } catch (e: any) {
+      showConfirm('Error', e?.message || 'An unexpected error occurred', () => {});
+    } finally {
+      setPinProcessing(false);
+      setPendingProduct(null);
+    }
   };
 
   const renderProduct = ({ item }: { item: VirtualNumberProduct }) => (
@@ -191,18 +284,24 @@ export default function ProductListScreen() {
           </View>
           
           <FlatList
-            data={COUNTRIES}
-            keyExtractor={(item) => item.code}
+            data={extendedCountries}
+            keyExtractor={(item) => item.code + '-' + item.name}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={[
                   styles.countryItem,
-                  { backgroundColor: selectedCountry.code === item.code ? (isDark ? '#333' : '#F0F0F0') : 'transparent' }
+                  { 
+                    backgroundColor: selectedCountry.code === item.code 
+                      ? (isDark ? '#333' : '#F0F0F0') 
+                      : 'transparent',
+                    opacity: 1,
+                  }
                 ]}
                 onPress={() => {
-                  setSelectedCountry(item);
+                  setSelectedCountry({ code: item.code, name: item.name, flag: item.flag });
                   setShowCountryModal(false);
                 }}
+                disabled={false}
               >
                 <ThemedText style={styles.countryText}>
                   {item.flag} {item.name}
@@ -296,6 +395,22 @@ export default function ProductListScreen() {
       )}
 
       {renderCountryModal()}
+      <TransactionPinModal
+        visible={showPinModal}
+        onClose={() => { if (!pinProcessing) { setShowPinModal(false); setPendingProduct(null); } }}
+        onPinEntered={processPurchase}
+        isProcessing={pinProcessing}
+        title="Enter Transaction PIN"
+        subtitle={pendingProduct ? `Confirm purchase of ${pendingProduct.serviceName}` : 'Enter your 4-digit PIN'}
+      />
+
+      {/* Optionally display purchase result summary */}
+      {purchaseResult && (
+        <View style={{ padding: 16 }}>
+          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Number: {purchaseResult?.data?.phone || purchaseResult?.phone}</ThemedText>
+          <ThemedText style={{ fontSize: 14, opacity: 0.7 }}>Status: {purchaseResult?.data?.status || purchaseResult?.status}</ThemedText>
+        </View>
+      )}
       
       <CustomAlert
         visible={alertState.visible}

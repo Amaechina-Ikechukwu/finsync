@@ -1019,6 +1019,11 @@ export const virtualNumberService = {
   getSMSMessages: async (numberId: string): Promise<ApiResponse<VirtualNumberSMSResponse>> => {
     return await apiClient.get<VirtualNumberSMSResponse>(`/virtual-numbers/sms/${numberId}`);
   },
+
+  // Buy a virtual number
+  buyVirtualNumber: async (payload: { country: string; operator: string; product: string; transaction_pin?: string }): Promise<ApiResponse<any>> => {
+    return await apiClient.post<any>('/virtual-numbers/buy', payload);
+  },
 };
 
 // eSIM purchases/interfaces
@@ -1041,6 +1046,14 @@ export const esimService = {
   // Get purchased eSIMs/orders
   getPurchasedEsims: async (): Promise<ApiResponse<EsimPurchasesResponse>> => {
     return await apiClient.get<EsimPurchasesResponse>('/esim/purchases');
+  },
+  /**
+   * Get Airalo user purchases
+   * Endpoint: GET /airalo/user-purchases
+   * Returns an array (data) of current user Airalo purchases/orders
+   */
+  getAiraloUserPurchases: async (): Promise<ApiResponse<{ id: string | number; status?: string; phone?: string; product?: string; country?: string; purchasedAt?: string | number }[]>> => {
+    return await apiClient.get<ApiResponse<{ id: string | number; status?: string; phone?: string; product?: string; country?: string; purchasedAt?: string | number }[]>>('/airalo/user-purchases') as unknown as ApiResponse<{ id: string | number; status?: string; phone?: string; product?: string; country?: string; purchasedAt?: string | number }[]>;
   },
   
   // --- Airalo operators (country-level) -----------------

@@ -57,12 +57,13 @@ export default function TransactionPinModal({
         setPin(numericValue);
     };
 
-    const handleSubmit = () => {
-        if (pin.length !== 4) {
+    const handleSubmit = (override?: string) => {
+        const value = override ?? pin;
+        if (value.length !== 4) {
             showNotification('Please enter a 4-digit PIN', 'error');
             return;
         }
-        onPinEntered(pin);
+        onPinEntered(value);
     };
 
     const handleCancel = () => {
@@ -74,7 +75,7 @@ export default function TransactionPinModal({
     };
 
     const onSubmitAuto = (val: string) => {
-        if (val.length === 4) handleSubmit();
+        if (val.length === 4) handleSubmit(val); // use immediate value to avoid state lag
     };
 
     return (
@@ -119,7 +120,7 @@ export default function TransactionPinModal({
                         <View style={styles.footer}>
                             <AppButton
                                 title={isProcessing ? "Processing..." : "Continue"}
-                                onPress={handleSubmit}
+                                onPress={() => handleSubmit()}
                                 variant="dark"
                                 disabled={pin.length !== 4 || isProcessing}
                                 loading={isProcessing}

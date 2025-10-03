@@ -22,7 +22,7 @@ export default function EsimIndexScreen() {
 
   // Toggle to use local mock data until the backend API is available.
   // Set to `false` when your `/esim/purchases` endpoint is ready.
-  const USE_MOCK_ESIMS = true;
+  const USE_MOCK_ESIMS = false; // now using real API endpoints
 
   const sampleEsims: EsimPurchase[] = [
     { id: 'demo-1', product: 'Airalo - 1GB (7 days)', status: 'active', phone: '+1 555 0100', country: 'US', purchasedAt: Date.now() },
@@ -38,13 +38,38 @@ export default function EsimIndexScreen() {
 
      
 
-      const response = await esimService.getPurchasedEsims();
-      if (response && (response as any).success === true && Array.isArray((response as any).data)) {
-        setItems((response as any).data as EsimPurchase[]);
-      } else if (Array.isArray(response)) {
-        setItems(response as EsimPurchase[]);
-      } else {
-        setError('Failed to fetch eSIM purchases');
+      // Fetch primary eSIM purchases (legacy) and Airalo purchases; merge distinct IDs
+      const [legacyRes, airaloRes] = await Promise.allSettled([
+        esimService.getPurchasedEsims(),
+        esimService.getAiraloUserPurchases(),
+      ]);
+
+      const collected: EsimPurchase[] = [];
+
+      if (legacyRes.status === 'fulfilled' && legacyRes.value?.success && Array.isArray(legacyRes.value.data)) {
+        collected.push(...legacyRes.value.data as any);
+      }
+      if (airaloRes.status === 'fulfilled' && airaloRes.value?.success && Array.isArray(airaloRes.value.data)) {
+        // Map Airalo structure to EsimPurchase shape
+        airaloRes.value.data.forEach((p: any) => {
+          collected.push({
+            id: p.id,
+            product: p.product || p.title || p.name,
+            status: p.status,
+            phone: p.phone || p.msisdn,
+            country: p.country || p.country_code || p.countryCode,
+            purchasedAt: p.purchasedAt || p.created_at || p.createdAt,
+          });
+        });
+      }
+
+      // De-dupe by id
+      const unique = new Map(collected.map(i => [String(i.id), i]));
+      setItems(Array.from(unique.values()));
+
+      if (collected.length === 0) {
+        // Not an error, just empty
+        setItems([]);
       }
     } catch (err) {
       console.error('Error fetching eSIMs', err);
