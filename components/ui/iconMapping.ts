@@ -80,6 +80,7 @@ export const ICON_MAPPING: Record<string, ComponentProps<typeof MaterialIcons>['
   'credit-card': 'credit-card',
   'gift': 'card-giftcard',
   'bitcoin': 'currency-bitcoin',
+  'bubble.left.and.bubble.right.fill': 'chat-bubble',
   'add-reaction': 'add-reaction',
   'qr.code': 'qr-code',
   'network': 'network-check',

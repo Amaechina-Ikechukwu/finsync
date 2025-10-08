@@ -58,6 +58,6 @@ export function slugifyCountryName(name: string): string {
  * then falls back to slugified country name.
  */
 export function getVirtualNumberCountrySlug(country: Country): string {
-  return EXPLICIT_COUNTRY_SLUGS[country.code] || slugifyCountryName(country.name);
+  return country.code || slugifyCountryName(country.name);
 }
 

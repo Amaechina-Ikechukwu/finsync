@@ -5,7 +5,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import apiClient from '@/services/apiClient';
 import { router, useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CountryItem {
@@ -62,13 +62,13 @@ export default function EsimCountriesScreen() {
 
   const renderItem = ({ item }: { item: CountryItem }) => (
     <TouchableOpacity style={styles.row} activeOpacity={0.8} onPress={() => handlePress(item)}>
-      <View style={styles.left}>
+      {/* <View style={styles.left}>
         {item.image?.url ? (
           <Image source={{ uri: item.image.url }} style={styles.flag} resizeMode="cover" />
         ) : (
           <View style={[styles.flag, { backgroundColor: colorScheme === 'dark' ? '#333' : '#eee' }]} />
         )}
-      </View>
+      </View> */}
       <View style={styles.middle}>
         <ThemedText style={styles.title}>{item.title}</ThemedText>
         <ThemedText style={styles.subtitle}>{(item.operators_count ?? 0) + ' operator(s)'}</ThemedText>
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '600' },
   subtitle: { fontSize: 13, opacity: 0.8, marginTop: 4 },
   right: { width: 36, alignItems: 'flex-end' },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#DDD', marginLeft: 92 },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#DDD' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 24 },
 });

@@ -307,6 +307,14 @@ export default function SettingsScreen() {
         {
             title: 'Support',
             items: [
+                {
+                    id: 'live-chat',
+                    title: 'Live Chat',
+                    subtitle: 'Chat with our support team',
+                    icon: 'bubble.left.and.bubble.right.fill',
+                    type: 'navigation',
+                    onPress: () => router.push('/settings/live-chat' as Href)
+                },
                 // {
                 //     id: 'help-center',
                 //     title: 'Help Center',
@@ -332,6 +340,30 @@ export default function SettingsScreen() {
                             }
                         } catch (e) {
                             showNotification('Could not open WhatsApp', 'error');
+                        }
+                    }
+                },
+                {
+                    id: 'email-support',
+                    title: 'Email Support',
+                    subtitle: 'Send an email to our support team',
+                    icon: 'envelope.fill',
+                    type: 'navigation',
+                    onPress: async () => {
+                        try {
+                            const email = 'admin@finsyncdigitialservices.com';
+                            const subject = encodeURIComponent('Support request');
+                            const body = encodeURIComponent('\n\nPlease provide details about your issue here.');
+                            const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+
+                            const supported = await Linking.canOpenURL(mailtoUrl);
+                            if (supported) {
+                                await Linking.openURL(mailtoUrl);
+                            } else {
+                                showNotification('Unable to open mail client on this device', 'error');
+                            }
+                        } catch (e) {
+                            showNotification('Could not open mail client', 'error');
                         }
                     }
                 },

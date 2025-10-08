@@ -77,7 +77,7 @@ const navigation=useNavigation()
 
     // Save last filters for pagination
     if (reset) {
-      lastSearchRef.current = '';
+      lastSearchRef.current = typeof _customSearch === 'string' ? _customSearch : '';
       lastCountryRef.current = useCountry;
       lastCategoryRef.current = useCategory;
     }
@@ -86,6 +86,10 @@ const navigation=useNavigation()
       limit: PAGE_SIZE,
       offset: nextPage * PAGE_SIZE,
     };
+    // attach search when provided
+    if (typeof _customSearch === 'string' && _customSearch.trim().length > 0) {
+      params.search = _customSearch.trim();
+    }
     if (useCountry && useCountry !== 'All') params.country = useCountry;
     if (useCategory && useCategory !== 'All') {
       const catObj = categories.find(c => c.name === useCategory);
@@ -120,6 +124,12 @@ const navigation=useNavigation()
   }, [country, category, countries.length, categories.length]);
 
   // Search is now client-side only, so no API call on search change
+  // Trigger API search when the user submits (presses enter) or clears the input
+  const onSubmitSearch = () => {
+    const q = search.trim();
+    // Reset to first page with search param
+    fetchProducts(true, 0, q, country, category);
+  };
 
   // Pagination fetch
   const handleEndReached = () => {
@@ -153,7 +163,8 @@ const navigation=useNavigation()
         placeholder="Search gift cards..."
         placeholderTextColor={colorScheme === 'dark' ? '#888' : '#aaa'}
         value={search}
-        onChangeText={setSearch}
+        onChangeText={(val) => { setSearch(val); if (val === '') { onSubmitSearch(); } }}
+        onSubmitEditing={onSubmitSearch}
         returnKeyType="search"
         autoCorrect={false}
         autoCapitalize="none"
@@ -173,7 +184,7 @@ const navigation=useNavigation()
             <Picker
               selectedValue={country}
               onValueChange={value => { setCountry(value); setPage(0); }}
-              style={[styles.picker, { color: themeColors.text }]}
+              style={[styles.picker, ]}
               mode="dropdown"
               enabled={!loadingCountries}
               dropdownIconColor={themeColors.text}
@@ -183,7 +194,7 @@ const navigation=useNavigation()
                   key={c.isoName}
                   label={c.name}
                   value={c.name}
-                  color={themeColors.text}
+                  // color={themeColors.text}
                 />
               ))}
             </Picker>

@@ -2,7 +2,9 @@
 // and avoid invisible icons due to SF Symbols name mismatches.
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StyleProp, TextStyle } from 'react-native';
-import { ICON_MAPPING, IconSymbolName } from './iconMapping';
+import { ICON_MAPPING, IconSymbolName as IconSymbolNameType } from './iconMapping';
+
+export type IconSymbolName = IconSymbolNameType;
 
 export function IconSymbol({
   name,

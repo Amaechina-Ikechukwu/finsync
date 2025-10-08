@@ -328,6 +328,20 @@ export const dollarCardService = {
     };
     return await apiClient.get('/dollar-card/transactions/db', q);
   },
+  // Get dollar card balance
+  getBalance: async (): Promise<ApiResponse<{
+    success: boolean;
+    data: {
+      card_id?: number;
+      available_balance?: number;
+      ledger_balance?: number;
+      currency?: string;
+      source?: string;
+      updated_at?: string;
+    };
+  }>> => {
+    return await apiClient.get('/dollar-card/balance');
+  },
 };
 
 // Naira Card API services (freeze status)
@@ -754,6 +768,12 @@ export interface VirtualNumberProductsResponse {
   data: VirtualNumberProductsByService;
 }
 
+// Countries list for Virtual Numbers
+export interface VirtualNumberCountryItem {
+  iso: string; // backend-provided country slug, e.g., 'nigeria', 'usa'
+  text_en: string; // display name
+}
+
 export interface SMSMessage {
   created_at: string;
   date: string;
@@ -1028,6 +1048,11 @@ export const virtualNumberService = {
   // Get purchased virtual numbers
   getPurchasedNumbers: async (): Promise<ApiResponse<VirtualNumberResponse>> => {
     return await apiClient.get<VirtualNumberResponse>('/virtual-numbers/purchases');
+  },
+  
+  // Get countries supported for virtual numbers
+  getCountries: async (): Promise<ApiResponse<VirtualNumberCountryItem[]>> => {
+    return await apiClient.get<VirtualNumberCountryItem[]>('/virtual-numbers/countries');
   },
   
   // Get virtual number products/countries

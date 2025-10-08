@@ -61,6 +61,7 @@ export default function DollarCardUI({ onCreate }: Props) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [data, setData] = useState<DollarCardData | null>(null);
+	const [balance, setBalance] = useState<number | null>(null);
 	// initial freeze-state fetched from server to drive the icon correctly on first render
 	const [initialFrozen, setInitialFrozen] = useState<boolean | null>(null);
 	const [showCvv, setShowCvv] = useState(false);
@@ -130,10 +131,27 @@ export default function DollarCardUI({ onCreate }: Props) {
 		}
 	}
 
+	// fetch balance separately
+	async function fetchBalance() {
+		try {
+			const res = await dollarCardService.getBalance();
+			if (res && (res as any).success && (res as any).data) {
+				setBalance((res as any).data.available_balance ?? null);
+			} else if ((res as any).available_balance !== undefined) {
+				setBalance((res as any).available_balance ?? null);
+			} else {
+				setBalance(null);
+			}
+		} catch (e) {
+			setBalance(null);
+		}
+	}
+
 	useEffect(() => {
 		let mounted = true;
 		if (mounted) {
 			fetchData();
+			fetchBalance();
 			// Also fetch freeze status immediately so the freeze icon reflects server state from the start
 			(async () => {
 				try {
@@ -258,7 +276,9 @@ export default function DollarCardUI({ onCreate }: Props) {
 						showSuccess('Success', 'Card funding initiated successfully');
 						setFundAmount('');
 						setEstimateData(null);
+						// refresh card details and balance
 						fetchData();
+						fetchBalance();
 					} else {
 						showError('Error', response.message || response.error || 'Failed to fund card');
 					}
@@ -331,7 +351,11 @@ export default function DollarCardUI({ onCreate }: Props) {
 						<View>
 							<Text style={styles.balanceLabel}>Balance</Text>
 							<Text style={styles.balanceValue}>
-								{typeof cardData.balance === 'number' ? `$${cardData.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
+								{typeof balance === 'number'
+									? `$${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+									: typeof cardData.balance === 'number'
+									? `$${cardData.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+									: '$0.00'}
 							</Text>
 						</View>
 

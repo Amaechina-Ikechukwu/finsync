@@ -84,7 +84,7 @@ export default function KycNinScreen() {
     try {
       const frontUrl = await uploadImageToStorage(frontUri, `ids/nin/${auth.currentUser?.uid}/${Date.now()}-front.jpg`);
       const res = await accountService.submitIdentity({ ninFront: frontUrl, nin });
-      console.log({res})
+     
       if (res.success) {
         showNotification(res.message || 'Details submitted successfully', 'success');
         router.back();

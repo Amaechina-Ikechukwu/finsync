@@ -1,7 +1,9 @@
 // Unified MaterialIcons implementation across platforms.
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
-import { ICON_MAPPING, IconSymbolName } from './iconMapping';
+import { ICON_MAPPING, IconSymbolName as IconSymbolNameType } from './iconMapping';
+
+export type IconSymbolName = IconSymbolNameType;
 
 export function IconSymbol({
   name,
